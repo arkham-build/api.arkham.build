@@ -1,0 +1,30 @@
+{
+  "name": "api.arkham.build",
+  "version": "0.0.1",
+  "main": "src/index.ts",
+  "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
+  "scripts": {
+    "check": "tsc",
+    "dev": "node --watch --experimental-strip-types --env-file=.env src/index.ts",
+    "fmt": "biome check --write",
+    "lint": "biome check",
+    "start": "node --experimental-strip-types --env-file=.env src/index.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.1.2",
+    "@tsconfig/node-ts": "23.6.1",
+    "@tsconfig/node22": "22.0.2",
+    "@tsconfig/strictest": "2.0.5",
+    "@types/node": "22.9.0",
+    "typescript": "5.8.3"
+  },
+  "dependencies": {
+    "@hono/node-server": "1.17.1",
+    "hono": "4.8.5",
+    "postgres": "3.4.7",
+    "zod": "4.0.5"
+  }
+}
