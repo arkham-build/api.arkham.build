@@ -10,6 +10,7 @@ services:
       NODE_ENV: development
       PORT: 8686
       POSTGRES_URL: postgresql://postgres:postgres@db:5432/api-arkham-build
+      CORS_ORIGINS: http://localhost:3000
     volumes:
       - .:/app
       - /app/node_modules
