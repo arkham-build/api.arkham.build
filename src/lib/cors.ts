@@ -1,7 +1,7 @@
 import { cors } from "hono/cors";
-import type { Config } from "../schemas/config.schema.ts";
+import config from "./config.ts";
 
-export function corsMiddleware(config: Config) {
+export function corsMiddleware() {
   const allowedOrigins = config.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);
@@ -12,16 +12,15 @@ export function corsMiddleware(config: Config) {
     credentials: true,
     maxAge: 600,
     origin(origin: string) {
-      const matches = allowedOrigins.some((allowed) => originMatches(allowed, origin));
+      const matches = allowedOrigins.some((allowed) =>
+        originMatches(allowed, origin),
+      );
       return matches ? origin : null;
     },
   });
 }
 
-function originMatches(
-  allowed: string,
-  origin: string,
-): boolean {
+function originMatches(allowed: string, origin: string): boolean {
   return (
     // direct match
     allowed === origin ||
