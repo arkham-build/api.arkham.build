@@ -1,4 +1,4 @@
-.PHONY: up down build logs shell clean
+.PHONY: up down build logs shell clean migrate-new migrate-dump
 
 up:
 	COMPOSE_MENU=0 docker compose up
@@ -17,3 +17,9 @@ shell:
 
 clean:
 	docker compose down -v --remove-orphans
+
+migrate-new:
+	docker compose run --rm -it  migrate new $(NAME)
+
+migrate-dump:
+	docker compose run --rm -it migrate dump

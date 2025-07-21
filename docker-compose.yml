@@ -1,4 +1,12 @@
 name: api-arkham-build
+
+x-database-config: &database-config
+  POSTGRES_DB: api-arkham-build
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+
+x-database-url: &database-url postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-api-arkham-build}?sslmode=disable
+
 services:
   app:
     build:
@@ -7,26 +15,45 @@ services:
     ports:
       - "8686:8686"
     environment:
+      CORS_ORIGINS: http://localhost:3000
+      DATABASE_URL: *database-url
       NODE_ENV: development
       PORT: 8686
-      POSTGRES_URL: postgresql://postgres:postgres@db:5432/api-arkham-build
-      CORS_ORIGINS: http://localhost:3000
     volumes:
       - .:/app
       - /app/node_modules
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: api-arkham-build
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      <<: *database-config
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 1s
+      timeout: 1s
+      retries: 10
+
+  migrate:
+    image: amacneil/dbmate:2
+    environment:
+      DATABASE_URL: *database-url
+      DBMATE_MIGRATIONS_DIR: /db/migrations
+      DBMATE_SCHEMA_FILE: /db/schema.sql
+    volumes:
+      - ./src/db:/db
+    depends_on:
+      db:
+        condition: service_healthy
+    command: up
 
 volumes:
   postgres_data:
