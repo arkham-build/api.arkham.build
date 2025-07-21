@@ -6,6 +6,10 @@ const config = ConfigSchema.parse(process.env);
 
 const app = new Hono();
 
+app.get("/", (c) => {
+  return c.text("Hello, World!");
+});
+
 serve(
   {
     fetch: app.fetch,

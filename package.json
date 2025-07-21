@@ -8,10 +8,10 @@
   },
   "scripts": {
     "check": "tsc",
-    "dev": "node --watch --experimental-strip-types --env-file=.env src/index.ts",
+    "dev": "node --watch --experimental-strip-types src/index.ts",
     "fmt": "biome check --write",
     "lint": "biome check",
-    "start": "node --experimental-strip-types --env-file=.env src/index.ts"
+    "start": "node --experimental-strip-types src/index.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.1.2",
