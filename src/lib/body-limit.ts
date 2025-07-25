@@ -7,5 +7,5 @@ export function bodyLimitMiddleware() {
       c.status(413);
       return c.json({ message: "Request body is too large." });
     },
-  })
+  });
 }

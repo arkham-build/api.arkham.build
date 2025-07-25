@@ -26,3 +26,6 @@ migration-dump-schema:
 
 ingest-metadata:
 	docker compose run --rm -it app npm run ingest:metadata
+
+ingest-arkhamdb-decklists:
+	docker compose run --rm -it app npm run ingest:arkhamdb-decklists

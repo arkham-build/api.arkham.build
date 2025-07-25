@@ -7,8 +7,11 @@ Generate zod schemas from the SQL tables in `./src/db/schema.sql` and write them
 - If there is an existing, matching schema, update the schema as necessary.
 
 # Instructions
-- Type JSONB columns as `z.record(z.string(), z.unknown())`.
-- The string `arkhamdb` shall be cased as `arkhamDB`.
+- Type JSONB columns as `z.unknown()`.
+- Prefer `z.nullish()` over `z.nullable()` or `z.optional()`.
+- The string `arkhamdb` shall be cased as `arkhamDB` in code.
+- File names should use lowercase and kebab-case.
 - All schemas and types should be exported from the file.
 - Name each file `{tableName}.schema.ts`
 - Don't create an index file.
+- After finishing, run `npm run fmt` to format the code.

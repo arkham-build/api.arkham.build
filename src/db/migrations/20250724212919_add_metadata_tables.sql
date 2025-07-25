@@ -32,32 +32,30 @@ CREATE TABLE cycles(
 
 CREATE TABLE packs(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
-  cycle_code VARCHAR(36) NOT NULL,
+  cycle_code VARCHAR(36) NOT NULL REFERENCES cycles(code),
   position INT NOT NULL,
   real_name VARCHAR(255) NOT NULL,
-  translations JSONB NOT NULL,
-  FOREIGN KEY (cycle_code) REFERENCES cycles(code) ON DELETE CASCADE
+  translations JSONB NOT NULL
 );
 
 
 CREATE TABLE encounter_sets(
   code VARCHAR(255) NOT NULL PRIMARY KEY,
-  pack_code VARCHAR(36) NOT NULL,
+  pack_code VARCHAR(36) NOT NULL REFERENCES packs(code),
   real_name VARCHAR(255) NOT NULL,
-  translations JSONB NOT NULL,
-  FOREIGN KEY (pack_code) REFERENCES packs(code) ON DELETE CASCADE
+  translations JSONB NOT NULL
 );
 
 CREATE TABLE taboo_sets(
   card_count INT NOT NULL,
   id INT NOT NULL PRIMARY KEY,
   date DATE NOT NULL,
-  name VARCHAR(255) NOT NULL
+  name VARCHAR(255)
 );
 
 CREATE TABLE cards(
   alt_art_investigator BOOLEAN DEFAULT FALSE,
-  alternate_of_code VARCHAR(36),
+  alternate_of_code VARCHAR(36) REFERENCES cards(id) DEFERRABLE INITIALLY DEFERRED,
   back_illustrator VARCHAR(255),
   back_link_id VARCHAR(36),
   clues INT,
@@ -70,8 +68,8 @@ CREATE TABLE cards(
   deck_requirements JSONB,
   doom INT,
   double_sided BOOLEAN DEFAULT FALSE,
-  duplicate_of_code VARCHAR(36),
-  encounter_code VARCHAR(255),
+  duplicate_of_code VARCHAR(36) REFERENCES cards(id) DEFERRABLE INITIALLY DEFERRED,
+  encounter_code VARCHAR(255) REFERENCES encounter_sets(code) DEFERRABLE INITIALLY DEFERRED,
   encounter_position INT,
   enemy_damage INT,
   enemy_evade INT,
@@ -80,9 +78,9 @@ CREATE TABLE cards(
   errata_date DATE,
   exceptional BOOLEAN DEFAULT FALSE,
   exile BOOLEAN DEFAULT FALSE,
-  faction_code VARCHAR(36) NOT NULL,
-  faction2_code VARCHAR(36),
-  faction3_code VARCHAR(36),
+  faction_code VARCHAR(36) NOT NULL REFERENCES factions(code),
+  faction2_code VARCHAR(36) REFERENCES factions(code) ON DELETE SET NULL,
+  faction3_code VARCHAR(36) REFERENCES factions(code) ON DELETE SET NULL,
   heals_damage BOOLEAN DEFAULT FALSE,
   heals_horror BOOLEAN DEFAULT FALSE,
   health INT,
@@ -94,7 +92,7 @@ CREATE TABLE cards(
   linked BOOLEAN DEFAULT FALSE,
   myriad BOOLEAN DEFAULT FALSE,
   official BOOLEAN NOT NULL DEFAULT TRUE,
-  pack_code VARCHAR(36) NOT NULL,
+  pack_code VARCHAR(36) NOT NULL REFERENCES packs(code) DEFERRABLE INITIALLY DEFERRED,
   pack_position INT,
   permanent BOOLEAN DEFAULT FALSE,
   position INT NOT NULL,
@@ -124,24 +122,15 @@ CREATE TABLE cards(
   skill_wild INT,
   skill_willpower INT,
   stage INT,
-  subtype_code VARCHAR(36),
-  taboo_set_id INT,
+  subtype_code VARCHAR(36) REFERENCES subtypes(code) ON DELETE SET NULL,
+  taboo_set_id INT REFERENCES taboo_sets(id) DEFERRABLE INITIALLY DEFERRED,
   taboo_xp INT,
-  tags VARCHAR(255),
+  tags JSONB,
   translations JSONB,
-  type_code VARCHAR(36) NOT NULL,
+  type_code VARCHAR(36) NOT NULL REFERENCES types(code) ON DELETE CASCADE,
   vengeance INT,
   victory INT,
-  xp INT,
-
-  FOREIGN KEY (encounter_code) REFERENCES encounter_sets(code) ON DELETE SET NULL,
-  FOREIGN KEY (faction_code) REFERENCES factions(code) ON DELETE CASCADE,
-  FOREIGN KEY (faction2_code) REFERENCES factions(code) ON DELETE SET NULL,
-  FOREIGN KEY (faction3_code) REFERENCES factions(code) ON DELETE SET NULL,
-  FOREIGN KEY (pack_code) REFERENCES packs(code) ON DELETE CASCADE,
-  FOREIGN KEY (subtype_code) REFERENCES subtypes(code) ON DELETE SET NULL,
-  FOREIGN KEY (type_code) REFERENCES types(code) ON DELETE CASCADE,
-  FOREIGN KEY (taboo_set_id) REFERENCES taboo_sets(id) ON DELETE SET NULL
+  xp INT
 );
 
 CREATE INDEX idx_cards_alternate_of_code ON cards(alternate_of_code);

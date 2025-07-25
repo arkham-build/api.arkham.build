@@ -11,6 +11,7 @@
     "dev": "node --watch --experimental-strip-types src/index.ts",
     "fmt": "biome check --write",
     "ingest:metadata": "node --experimental-strip-types src/commands/ingest-metadata.ts",
+    "ingest:arkhamdb-decklists": "node --experimental-strip-types src/commands/ingest-decks.ts",
     "lint": "biome check",
     "start": "node --experimental-strip-types src/index.ts"
   },

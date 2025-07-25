@@ -1,7 +1,17 @@
 import sql from "../db/db.ts";
-import factions from "../db/seeds/factions.json" with { type: "json" };
-import subtypes from "../db/seeds/subtypes.json" with { type: "json" };
-import types from "../db/seeds/types.json" with { type: "json" };
+import { type Card, cardSchema } from "../db/schemas/card.schema.ts";
+import { cycleSchema } from "../db/schemas/cycle.schema.ts";
+import { dataVersionSchema } from "../db/schemas/data-version.schema.ts";
+import { encounterSetSchema } from "../db/schemas/encounter-set.schema.ts";
+import { factionSchema } from "../db/schemas/faction.schema.ts";
+import { packSchema } from "../db/schemas/pack.schema.ts";
+import { subtypeSchema } from "../db/schemas/subtype.schema.ts";
+import { tabooSetSchema } from "../db/schemas/taboo-set.schema.ts";
+import { typeSchema } from "../db/schemas/type.schema.ts";
+import factionsSeed from "../db/seeds/factions.json" with { type: "json" };
+import subtypesSeed from "../db/seeds/subtypes.json" with { type: "json" };
+import typesSeed from "../db/seeds/types.json" with { type: "json" };
+import { chunkArray } from "../lib/chunk-array.ts";
 import config from "../lib/config.ts";
 import { gql } from "../lib/gql.ts";
 
@@ -10,45 +20,47 @@ await ingest();
 await sql.end();
 
 async function ingest() {
-  console.time("querying-graphql-api");
+  console.time("fetching-metadata");
   const { data } = await gql<QueryResponse>(config.DATA_API_URL, query());
-  console.timeEnd("querying-graphql-api");
+  console.timeEnd("fetching-metadata");
 
   console.time("recreating-data");
 
-  const {
-    all_card: cards,
-    all_card_updated: data_versions,
-    card_encounter_set,
-    cycle,
-    pack,
-    taboo_set,
-  } = data;
-
-  const encounterSets = resolveEncounterSets(card_encounter_set, cards);
+  const cards = data.all_card.map((c) => cardSchema.parse(c));
+  const cycles = data.cycle.map((c) => cycleSchema.parse(c));
+  const dataVersion = data.all_card_updated.map((d) =>
+    dataVersionSchema.parse(d),
+  );
+  const encounterSets = resolveEncounterSets(data.card_encounter_set, cards);
+  const factions = factionsSeed.map((f) => factionSchema.parse(f));
+  const packs = data.pack.map((p) => packSchema.parse(p));
+  const subtypes = subtypesSeed.map((s) => subtypeSchema.parse(s));
+  const tabooSets = data.taboo_set.map((t) => tabooSetSchema.parse(t));
+  const types = typesSeed.map((t) => typeSchema.parse(t));
 
   await sql.begin(async (sql) => {
+    await sql`delete from cards`;
     await sql`delete from factions`;
     await sql`delete from subtypes`;
     await sql`delete from types`;
     await sql`delete from data_versions`;
-    await sql`delete from cycles`;
     await sql`delete from packs`;
+    await sql`delete from cycles`;
     await sql`delete from encounter_sets`;
     await sql`delete from taboo_sets`;
-    await sql`delete from cards`;
 
     await sql`insert into factions ${sql(factions)}`;
     await sql`insert into subtypes ${sql(subtypes)}`;
     await sql`insert into types ${sql(types)}`;
-    await sql`insert into data_versions ${sql(data_versions)}`;
-    await sql`insert into taboo_sets ${sql(taboo_set)}`;
-    await sql`insert into cycles ${sql(cycle)}`;
-    await sql`insert into packs ${sql(pack)}`;
+    await sql`insert into data_versions ${sql(dataVersion)}`;
+    await sql`insert into taboo_sets ${sql(tabooSets)}`;
+    await sql`insert into cycles ${sql(cycles)}`;
+    await sql`insert into packs ${sql(packs)}`;
     await sql`insert into encounter_sets ${sql(encounterSets)}`;
 
-    for (const chunk of chunkArray(cards, 100)) {
-      await sql`insert into cards ${sql(chunk)}`;
+    for (const chunk of chunkArray(cards, 500)) {
+      // biome-ignore lint/suspicious/noExplicitAny: Bad library typing.
+      await sql`insert into cards ${sql(chunk as any[])}`;
     }
   });
 
@@ -87,11 +99,7 @@ function query() {
           official: { _eq: true },
           taboo_placeholder: { _is_null: true },
           pack_code: { _neq: "zbh_00008" },
-          version: { _lte: ${config.DATA_VERSION} },
-          _or: [
-            { taboo_set_id: { _neq: 0 } },
-            { taboo_set_id: { _is_null: true } }
-          ]
+          version: { _lte: ${config.DATA_VERSION} }
         }
       ) {
         alt_art_investigator
@@ -226,7 +234,7 @@ function query() {
         }
       }
 
-      taboo_set(where: { active: { _eq: true } }) {
+      taboo_set {
         name
         card_count
         id
@@ -238,7 +246,7 @@ function query() {
 
 function resolveEncounterSets(
   card_encounter_set: QueryResponse["card_encounter_set"],
-  cards: QueryResponse["all_card"],
+  cards: Card[],
 ) {
   const encounterSetsMap = card_encounter_set.reduce(
     (acc, curr) => {
@@ -273,23 +281,17 @@ function resolveEncounterSets(
         locale: set.locale,
       }));
 
-      acc.push({
-        code: en.code,
-        real_name: en.name,
-        pack_code,
-        translations,
-      });
+      acc.push(
+        encounterSetSchema.parse({
+          code: en.code,
+          real_name: en.name,
+          pack_code,
+          translations,
+        }),
+      );
 
       return acc;
     },
     [] as Record<string, unknown>[],
   );
-}
-
-function chunkArray<T>(arr: T[], size: number): T[][] {
-  const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    result.push(arr.slice(i, i + size));
-  }
-  return result;
 }
