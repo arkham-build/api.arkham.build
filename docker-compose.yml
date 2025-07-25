@@ -17,6 +17,9 @@ services:
     environment:
       CORS_ORIGINS: http://localhost:3000
       DATABASE_URL: *database-url
+      DATA_API_URL: https://gapi.arkhamcards.com/v1/graphql
+      DATA_LOCALES:  de,en,es,fr,ko,pl,ru,zh
+      DATA_VERSION: 8
       NODE_ENV: development
       PORT: 8686
     volumes:

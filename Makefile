@@ -18,8 +18,11 @@ shell:
 clean:
 	docker compose down -v --remove-orphans
 
-migrate-new:
-	docker compose run --rm -it  migrate new $(NAME)
+migration-create:
+	docker compose run --rm -it migrate new $(NAME)
 
-migrate-dump:
+migration-dump-schema:
 	docker compose run --rm -it migrate dump
+
+ingest-metadata:
+	docker compose run --rm -it app npm run ingest:metadata

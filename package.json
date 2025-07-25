@@ -10,6 +10,7 @@
     "check": "tsc",
     "dev": "node --watch --experimental-strip-types src/index.ts",
     "fmt": "biome check --write",
+    "ingest:metadata": "node --experimental-strip-types src/commands/ingest-metadata.ts",
     "lint": "biome check",
     "start": "node --experimental-strip-types src/index.ts"
   },
