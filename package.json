@@ -10,8 +10,9 @@
     "check": "tsc",
     "dev": "node --watch --experimental-strip-types src/index.ts",
     "fmt": "biome check --write",
-    "ingest:metadata": "node --experimental-strip-types src/commands/ingest-metadata.ts",
-    "ingest:arkhamdb-decklists": "node --experimental-strip-types src/commands/ingest-decks.ts",
+    "generate:database-types": "kysely-codegen --out-file src/db/schema.types.ts",
+    "ingest:metadata": "node --experimental-strip-types src/scripts/ingest-metadata.ts",
+    "ingest:arkhamdb-decklists": "node --experimental-strip-types src/scripts/ingest-arkhamdb-decklists.ts",
     "lint": "biome check",
     "start": "node --experimental-strip-types src/index.ts"
   },
@@ -21,12 +22,15 @@
     "@tsconfig/node22": "22.0.2",
     "@tsconfig/strictest": "2.0.5",
     "@types/node": "22.9.0",
+    "@types/pg": "8.15.5",
+    "kysely-codegen": "0.18.5",
     "typescript": "5.8.3"
   },
   "dependencies": {
     "@hono/node-server": "1.17.1",
     "hono": "4.8.5",
-    "postgres": "3.4.7",
+    "kysely": "0.28.3",
+    "pg": "8.16.3",
     "zod": "4.0.5"
   }
 }

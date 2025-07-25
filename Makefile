@@ -1,7 +1,7 @@
 .PHONY: up down build logs shell clean migrate-new migrate-dump
 
 up:
-	COMPOSE_MENU=0 docker compose up
+	COMPOSE_MENU=0 docker compose up --build
 
 down:
 	docker compose down
@@ -24,8 +24,11 @@ migration-create:
 migration-dump-schema:
 	docker compose run --rm -it migrate dump
 
+generate-database-types:
+	docker compose run --rm -it app npm run generate:database-types
+
 ingest-metadata:
-	docker compose run --rm -it app npm run ingest:metadata
+	docker compose run --build --rm -it app npm run ingest:metadata
 
 ingest-arkhamdb-decklists:
-	docker compose run --rm -it app npm run ingest:arkhamdb-decklists
+	docker compose run --build --rm -it app npm run ingest:arkhamdb-decklists

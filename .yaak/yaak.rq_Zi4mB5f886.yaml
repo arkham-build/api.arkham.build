@@ -1,0 +1,28 @@
+type: http_request
+model: http_request
+id: rq_Zi4mB5f886
+createdAt: 2025-07-30T21:54:42.570995
+updatedAt: 2025-07-30T22:22:15.789159
+workspaceId: wk_bBoraEVHnK
+folderId: fl_ZDDpsyiw3d
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "canonical_investigator_code": "03006-03006",
+      "required_cards": ["01088", "01093"],
+      "analysis_algorithm": "percentile rank"
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ehIAYH35yh
+method: POST
+name: Lola (percentile%, required cards)
+sortPriority: -1753529739888.998
+url: ${[ base_url ]}/recommendations
+urlParameters: []

@@ -1,61 +1,61 @@
 -- migrate:up
 
-CREATE TABLE factions(
+CREATE TABLE faction(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
   is_primary BOOLEAN NOT NULL,
   name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE subtypes(
+CREATE TABLE subtype(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
   name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE types(
+CREATE TABLE type(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
   name VARCHAR(255) NOT NULL
 );
 
-CREATE TABLE data_versions(
+CREATE TABLE data_version(
   card_count INT NOT NULL,
   cards_updated_at TIMESTAMP NOT NULL,
   locale VARCHAR(10) NOT NULL PRIMARY KEY,
   translation_updated_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE cycles(
+CREATE TABLE cycle(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
   position INT NOT NULL,
   real_name VARCHAR(255) NOT NULL,
   translations JSONB NOT NULL
 );
 
-CREATE TABLE packs(
+CREATE TABLE pack(
   code VARCHAR(36) NOT NULL PRIMARY KEY,
-  cycle_code VARCHAR(36) NOT NULL REFERENCES cycles(code),
+  cycle_code VARCHAR(36) NOT NULL REFERENCES cycle(code),
   position INT NOT NULL,
   real_name VARCHAR(255) NOT NULL,
   translations JSONB NOT NULL
 );
 
 
-CREATE TABLE encounter_sets(
+CREATE TABLE encounter_set(
   code VARCHAR(255) NOT NULL PRIMARY KEY,
-  pack_code VARCHAR(36) NOT NULL REFERENCES packs(code),
+  pack_code VARCHAR(36) NOT NULL REFERENCES pack(code),
   real_name VARCHAR(255) NOT NULL,
   translations JSONB NOT NULL
 );
 
-CREATE TABLE taboo_sets(
+CREATE TABLE taboo_set(
   card_count INT NOT NULL,
   id INT NOT NULL PRIMARY KEY,
-  date DATE NOT NULL,
+  date TIMESTAMP NOT NULL,
   name VARCHAR(255)
 );
 
-CREATE TABLE cards(
+CREATE TABLE card(
   alt_art_investigator BOOLEAN DEFAULT FALSE,
-  alternate_of_code VARCHAR(36) REFERENCES cards(id) DEFERRABLE INITIALLY DEFERRED,
+  alternate_of_code VARCHAR(36) REFERENCES card(id) DEFERRABLE INITIALLY DEFERRED,
   back_illustrator VARCHAR(255),
   back_link_id VARCHAR(36),
   clues INT,
@@ -68,19 +68,19 @@ CREATE TABLE cards(
   deck_requirements JSONB,
   doom INT,
   double_sided BOOLEAN DEFAULT FALSE,
-  duplicate_of_code VARCHAR(36) REFERENCES cards(id) DEFERRABLE INITIALLY DEFERRED,
-  encounter_code VARCHAR(255) REFERENCES encounter_sets(code) DEFERRABLE INITIALLY DEFERRED,
+  duplicate_of_code VARCHAR(36) REFERENCES card(id) DEFERRABLE INITIALLY DEFERRED,
+  encounter_code VARCHAR(255) REFERENCES encounter_set(code),
   encounter_position INT,
   enemy_damage INT,
   enemy_evade INT,
   enemy_fight INT,
   enemy_horror INT,
-  errata_date DATE,
+  errata_date TIMESTAMP,
   exceptional BOOLEAN DEFAULT FALSE,
   exile BOOLEAN DEFAULT FALSE,
-  faction_code VARCHAR(36) NOT NULL REFERENCES factions(code),
-  faction2_code VARCHAR(36) REFERENCES factions(code) ON DELETE SET NULL,
-  faction3_code VARCHAR(36) REFERENCES factions(code) ON DELETE SET NULL,
+  faction_code VARCHAR(36) NOT NULL REFERENCES faction(code),
+  faction2_code VARCHAR(36) REFERENCES faction(code) ON DELETE SET NULL,
+  faction3_code VARCHAR(36) REFERENCES faction(code) ON DELETE SET NULL,
   heals_damage BOOLEAN DEFAULT FALSE,
   heals_horror BOOLEAN DEFAULT FALSE,
   health INT,
@@ -92,7 +92,7 @@ CREATE TABLE cards(
   linked BOOLEAN DEFAULT FALSE,
   myriad BOOLEAN DEFAULT FALSE,
   official BOOLEAN NOT NULL DEFAULT TRUE,
-  pack_code VARCHAR(36) NOT NULL REFERENCES packs(code) DEFERRABLE INITIALLY DEFERRED,
+  pack_code VARCHAR(36) NOT NULL REFERENCES pack(code),
   pack_position INT,
   permanent BOOLEAN DEFAULT FALSE,
   position INT NOT NULL,
@@ -122,51 +122,29 @@ CREATE TABLE cards(
   skill_wild INT,
   skill_willpower INT,
   stage INT,
-  subtype_code VARCHAR(36) REFERENCES subtypes(code) ON DELETE SET NULL,
-  taboo_set_id INT REFERENCES taboo_sets(id) DEFERRABLE INITIALLY DEFERRED,
+  subtype_code VARCHAR(36) REFERENCES subtype(code) ON DELETE SET NULL,
+  taboo_set_id INT REFERENCES taboo_set(id),
   taboo_xp INT,
   tags JSONB,
   translations JSONB,
-  type_code VARCHAR(36) NOT NULL REFERENCES types(code) ON DELETE CASCADE,
+  type_code VARCHAR(36) NOT NULL REFERENCES type(code) ON DELETE CASCADE,
   vengeance INT,
   victory INT,
   xp INT
 );
 
-CREATE INDEX idx_cards_alternate_of_code ON cards(alternate_of_code);
-CREATE INDEX idx_cards_duplicate_of_code ON cards(duplicate_of_code);
-CREATE INDEX idx_cards_encounter_code ON cards(encounter_code);
-CREATE INDEX idx_cards_faction_code ON cards(faction_code);
-CREATE INDEX idx_cards_faction2_code ON cards(faction2_code);
-CREATE INDEX idx_cards_faction3_code ON cards(faction3_code);
-CREATE INDEX idx_cards_pack_code ON cards(pack_code);
-CREATE INDEX idx_cards_subtype_code ON cards(subtype_code);
-CREATE INDEX idx_cards_type_code ON cards(type_code);
-CREATE INDEX idx_cards_taboo_set_id ON cards(taboo_set_id);
-CREATE INDEX idx_encounter_sets_pack_code ON encounter_sets(pack_code);
-CREATE INDEX idx_packs_cycle_code ON packs(cycle_code);
+CREATE INDEX idx_card_code ON card(code);
+CREATE INDEX idx_card_alternate_of_code ON card(alternate_of_code);
+CREATE INDEX idx_card_duplicate_of_code ON card(duplicate_of_code);
+CREATE INDEX idx_card_encounter_code ON card(encounter_code);
+CREATE INDEX idx_card_faction_code ON card(faction_code);
+CREATE INDEX idx_card_faction2_code ON card(faction2_code);
+CREATE INDEX idx_card_faction3_code ON card(faction3_code);
+CREATE INDEX idx_card_pack_code ON card(pack_code);
+CREATE INDEX idx_card_subtype_code ON card(subtype_code);
+CREATE INDEX idx_card_type_code ON card(type_code);
+CREATE INDEX idx_card_taboo_set_id ON card(taboo_set_id);
+CREATE INDEX idx_encounter_set_pack_code ON encounter_set(pack_code);
+CREATE INDEX idx_pack_cycle_code ON pack(cycle_code);
 
 -- migrate:down
-
-DROP TABLE cards;
-DROP TABLE cycles;
-DROP TABLE data_versions;
-DROP TABLE encounter_sets;
-DROP TABLE factions;
-DROP TABLE packs;
-DROP TABLE subtypes;
-DROP TABLE taboo_sets;
-DROP TABLE types;
-
-DROP INDEX idx_cards_alternate_of_code;
-DROP INDEX idx_cards_duplicate_of_code;
-DROP INDEX idx_cards_encounter_code;
-DROP INDEX idx_cards_faction_code;
-DROP INDEX idx_cards_faction2_code;
-DROP INDEX idx_cards_faction3_code;
-DROP INDEX idx_cards_pack_code;
-DROP INDEX idx_cards_subtype_code;
-DROP INDEX idx_cards_type_code;
-DROP INDEX idx_cards_taboo_set_id;
-DROP INDEX idx_encounter_sets_pack_code;
-DROP INDEX idx_packs_cycle_code;

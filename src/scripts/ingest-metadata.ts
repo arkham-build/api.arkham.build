@@ -1,13 +1,5 @@
-import sql from "../db/db.ts";
-import { type Card, cardSchema } from "../db/schemas/card.schema.ts";
-import { cycleSchema } from "../db/schemas/cycle.schema.ts";
-import { dataVersionSchema } from "../db/schemas/data-version.schema.ts";
-import { encounterSetSchema } from "../db/schemas/encounter-set.schema.ts";
-import { factionSchema } from "../db/schemas/faction.schema.ts";
-import { packSchema } from "../db/schemas/pack.schema.ts";
-import { subtypeSchema } from "../db/schemas/subtype.schema.ts";
-import { tabooSetSchema } from "../db/schemas/taboo-set.schema.ts";
-import { typeSchema } from "../db/schemas/type.schema.ts";
+/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+import { db } from "../db/db.ts";
 import factionsSeed from "../db/seeds/factions.json" with { type: "json" };
 import subtypesSeed from "../db/seeds/subtypes.json" with { type: "json" };
 import typesSeed from "../db/seeds/types.json" with { type: "json" };
@@ -17,50 +9,55 @@ import { gql } from "../lib/gql.ts";
 
 await ingest();
 
-await sql.end();
+await db.destroy();
 
 async function ingest() {
   console.time("fetching-metadata");
-  const { data } = await gql<QueryResponse>(config.DATA_API_URL, query());
+  const { data } = await gql<QueryResponse>(
+    config.METADATA_INGEST_URL,
+    query(),
+  );
   console.timeEnd("fetching-metadata");
 
   console.time("recreating-data");
 
-  const cards = data.all_card.map((c) => cardSchema.parse(c));
-  const cycles = data.cycle.map((c) => cycleSchema.parse(c));
-  const dataVersion = data.all_card_updated.map((d) =>
-    dataVersionSchema.parse(d),
-  );
-  const encounterSets = resolveEncounterSets(data.card_encounter_set, cards);
-  const factions = factionsSeed.map((f) => factionSchema.parse(f));
-  const packs = data.pack.map((p) => packSchema.parse(p));
-  const subtypes = subtypesSeed.map((s) => subtypeSchema.parse(s));
-  const tabooSets = data.taboo_set.map((t) => tabooSetSchema.parse(t));
-  const types = typesSeed.map((t) => typeSchema.parse(t));
+  await db.transaction().execute(async (tx) => {
+    await tx.deleteFrom("card").execute();
+    await tx.deleteFrom("faction").execute();
+    await tx.deleteFrom("subtype").execute();
+    await tx.deleteFrom("type").execute();
+    await tx.deleteFrom("data_version").execute();
+    await tx.deleteFrom("encounter_set").execute();
+    await tx.deleteFrom("pack").execute();
+    await tx.deleteFrom("cycle").execute();
+    await tx.deleteFrom("taboo_set").execute();
 
-  await sql.begin(async (sql) => {
-    await sql`delete from cards`;
-    await sql`delete from factions`;
-    await sql`delete from subtypes`;
-    await sql`delete from types`;
-    await sql`delete from data_versions`;
-    await sql`delete from packs`;
-    await sql`delete from cycles`;
-    await sql`delete from encounter_sets`;
-    await sql`delete from taboo_sets`;
+    await tx.insertInto("faction").values(factionsSeed).execute();
+    await tx.insertInto("subtype").values(subtypesSeed).execute();
+    await tx.insertInto("type").values(typesSeed).execute();
+    await tx
+      .insertInto("data_version")
+      .values(data.all_card_updated as any[])
+      .execute();
 
-    await sql`insert into factions ${sql(factions)}`;
-    await sql`insert into subtypes ${sql(subtypes)}`;
-    await sql`insert into types ${sql(types)}`;
-    await sql`insert into data_versions ${sql(dataVersion)}`;
-    await sql`insert into taboo_sets ${sql(tabooSets)}`;
-    await sql`insert into cycles ${sql(cycles)}`;
-    await sql`insert into packs ${sql(packs)}`;
-    await sql`insert into encounter_sets ${sql(encounterSets)}`;
+    await tx
+      .insertInto("taboo_set")
+      .values(data.taboo_set as any[])
+      .execute();
 
-    for (const chunk of chunkArray(cards, 500)) {
-      // biome-ignore lint/suspicious/noExplicitAny: Bad library typing.
-      await sql`insert into cards ${sql(chunk as any[])}`;
+    await tx.insertInto("cycle").values(serialize(data.cycle)).execute();
+
+    await tx.insertInto("pack").values(serialize(data.pack)).execute();
+
+    await tx
+      .insertInto("encounter_set")
+      .values(
+        serialize(resolveEncounterSets(data.card_encounter_set, data.all_card)),
+      )
+      .execute();
+
+    for (const chunk of chunkArray(data.all_card, 500)) {
+      await tx.insertInto("card").values(serialize(chunk)).execute();
     }
   });
 
@@ -86,7 +83,7 @@ type QueryResponse = {
 };
 
 function query() {
-  const locales = config.DATA_LOCALES.split(",").map((l) => l.trim());
+  const locales = config.METADATA_LOCALES.split(",").map((l) => l.trim());
   const translationLocales = locales.filter((l) => l !== "en");
 
   const localesStr = JSON.stringify(locales);
@@ -99,7 +96,7 @@ function query() {
           official: { _eq: true },
           taboo_placeholder: { _is_null: true },
           pack_code: { _neq: "zbh_00008" },
-          version: { _lte: ${config.DATA_VERSION} }
+          version: { _lte: ${config.METADATA_VERSION} }
         }
       ) {
         alt_art_investigator
@@ -246,7 +243,7 @@ function query() {
 
 function resolveEncounterSets(
   card_encounter_set: QueryResponse["card_encounter_set"],
-  cards: Card[],
+  cards: { encounter_code?: string; pack_code: string }[],
 ) {
   const encounterSetsMap = card_encounter_set.reduce(
     (acc, curr) => {
@@ -281,17 +278,32 @@ function resolveEncounterSets(
         locale: set.locale,
       }));
 
-      acc.push(
-        encounterSetSchema.parse({
-          code: en.code,
-          real_name: en.name,
-          pack_code,
-          translations,
-        }),
-      );
+      acc.push({
+        code: en.code,
+        real_name: en.name,
+        pack_code,
+        translations,
+      });
 
       return acc;
     },
     [] as Record<string, unknown>[],
   );
+}
+
+function serialize(data: Record<string, unknown>[]): any[] {
+  return data.map((row) => {
+    const serializedRow: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(row)) {
+      if (typeof value === "object" && value !== null) {
+        const s = JSON.stringify(value);
+        serializedRow[key] = s;
+      } else {
+        serializedRow[key] = value;
+      }
+    }
+
+    return serializedRow;
+  });
 }

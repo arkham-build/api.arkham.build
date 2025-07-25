@@ -15,19 +15,22 @@ services:
     ports:
       - "8686:8686"
     environment:
+      ARKHAMDB_DECKLISTS_INGEST_URL: https://arkhamdb-decklists-mirror.arkham.build
       CORS_ORIGINS: http://localhost:3000
       DATABASE_URL: *database-url
-      DATA_API_URL: https://gapi.arkhamcards.com/v1/graphql
-      DATA_LOCALES:  de,en,es,fr,ko,pl,ru,zh
-      DATA_VERSION: 8
+      METADATA_INGEST_URL: https://gapi.arkhamcards.com/v1/graphql
+      METADATA_LOCALES:  de,en,es,fr,ko,pl,ru,zh
+      METADATA_VERSION: 8
+      RECOMMENDATIONS_CUTOFF: 2016-09
       NODE_ENV: development
       PORT: 8686
     volumes:
-      - .:/app
-      - /app/node_modules
+      - ./src:/app/src
     depends_on:
       db:
         condition: service_healthy
+      generate-db-types:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
 
@@ -57,6 +60,22 @@ services:
       db:
         condition: service_healthy
     command: up
+
+  generate-db-types:
+    build:
+      context: .
+      target: development
+    environment:
+      DATABASE_URL: *database-url
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: npm run generate:database-types
 
 volumes:
   postgres_data:

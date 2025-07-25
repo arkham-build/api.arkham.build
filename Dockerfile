@@ -13,6 +13,7 @@ ENV NODE_ENV=development
 ENV PORT=3000
 
 COPY . .
+COPY --from=base /app/node_modules ./node_modules
 
 EXPOSE $PORT
 CMD ["npm", "run", "dev"]
@@ -23,6 +24,7 @@ FROM base AS production
 ENV NODE_ENV=production
 ENV PORT=3000
 
+COPY --from=base /app/node_modules ./node_modules
 COPY . .
 
 RUN addgroup -g 1001 -S nodejs

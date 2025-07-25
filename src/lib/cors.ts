@@ -8,7 +8,12 @@ export function corsMiddleware() {
 
   return cors({
     allowMethods: ["DELETE", "GET", "PATCH", "POST", "PUT"],
-    allowHeaders: ["Authorization", "If-Modified-Since", "X-Client-Id"],
+    allowHeaders: [
+      "Authorization",
+      "Content-Type",
+      "If-Modified-Since",
+      "X-Client-Id",
+    ],
     credentials: true,
     maxAge: 600,
     origin(origin: string) {

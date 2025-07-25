@@ -1,0 +1,27 @@
+type: http_request
+model: http_request
+id: rq_sDDtwQeKjE
+createdAt: 2025-07-30T21:51:13.618760
+updatedAt: 2025-07-30T21:55:02.595260
+workspaceId: wk_bBoraEVHnK
+folderId: fl_ZDDpsyiw3d
+authentication: {}
+authenticationType: null
+body:
+  text: |-
+    {
+      "canonical_investigator_code": "03006-03006",
+      "required_cards": ["01088", "01093"]
+    }
+bodyType: application/json
+description: ''
+headers:
+- enabled: true
+  name: Content-Type
+  value: application/json
+  id: ehIAYH35yh
+method: POST
+name: Lola Hayes (abs%, required cards)
+sortPriority: -1753529739888.999
+url: ${[ base_url ]}/recommendations
+urlParameters: []
