@@ -1,9 +1,12 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
+/** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script */
 import type { Insertable } from "kysely";
-import { db } from "../db/db.ts";
+import { getDatabase } from "../db/db.ts";
 import type { ArkhamdbDecklist } from "../db/schema.types.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
-import config from "../lib/config.ts";
+import { configFromEnv } from "../lib/config.ts";
+
+const config = configFromEnv();
+const db = getDatabase(config);
 
 await ingest();
 await db.destroy();
@@ -105,7 +108,7 @@ type ApiDecklist = {
 
 async function fetchJsonFile<T>(name: string) {
   const res = await fetch(
-    `${config.ARKHAMDB_DECKLISTS_INGEST_URL}/${name}.json`,
+    `${config.INGEST_URL_ARKHAMDB_DECKLISTS}/${name}.json`,
   );
   if (!res.ok) throw new Error(`Failed to fetch ${name}: ${res.statusText}`);
   return res.json() as T;

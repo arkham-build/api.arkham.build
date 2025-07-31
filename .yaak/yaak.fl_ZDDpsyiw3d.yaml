@@ -2,12 +2,12 @@ type: folder
 model: folder
 id: fl_ZDDpsyiw3d
 createdAt: 2025-07-26T11:35:36.516054
-updatedAt: 2025-07-26T11:43:17.272865
+updatedAt: 2025-08-02T09:27:47.401330
 workspaceId: wk_bBoraEVHnK
 folderId: null
 authentication: {}
 authenticationType: null
 description: ''
 headers: []
-name: /recommendations
+name: /v2/public/recommendations
 sortPriority: -1753529700000.0

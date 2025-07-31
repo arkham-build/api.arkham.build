@@ -1,12 +1,5 @@
 name: api-arkham-build
 
-x-database-config: &database-config
-  POSTGRES_DB: api-arkham-build
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-
-x-database-url: &database-url postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-api-arkham-build}?sslmode=disable
-
 services:
   app:
     build:
@@ -14,30 +7,16 @@ services:
       target: development
     ports:
       - "8686:8686"
-    environment:
-      ARKHAMDB_DECKLISTS_INGEST_URL: https://arkhamdb-decklists-mirror.arkham.build
-      CORS_ORIGINS: http://localhost:3000
-      DATABASE_URL: *database-url
-      METADATA_INGEST_URL: https://gapi.arkhamcards.com/v1/graphql
-      METADATA_LOCALES:  de,en,es,fr,ko,pl,ru,zh
-      METADATA_VERSION: 8
-      RECOMMENDATIONS_CUTOFF: 2016-09
-      NODE_ENV: development
-      PORT: 8686
+    env_file: .env.dev
     volumes:
       - ./src:/app/src
     depends_on:
       db:
         condition: service_healthy
-      generate-db-types:
-        condition: service_completed_successfully
-      migrate:
-        condition: service_completed_successfully
 
   db:
     image: postgres:16-alpine
-    environment:
-      <<: *database-config
+    env_file: .env.dev
     ports:
       - "5432:5432"
     volumes:
@@ -49,33 +28,16 @@ services:
       retries: 10
 
   migrate:
-    image: amacneil/dbmate:2
-    environment:
-      DATABASE_URL: *database-url
-      DBMATE_MIGRATIONS_DIR: /db/migrations
-      DBMATE_SCHEMA_FILE: /db/schema.sql
+    build:
+      context: .
+      target: dbmate
+    env_file: .env.dev
     volumes:
       - ./src/db:/db
     depends_on:
       db:
         condition: service_healthy
     command: up
-
-  generate-db-types:
-    build:
-      context: .
-      target: development
-    environment:
-      DATABASE_URL: *database-url
-    volumes:
-      - .:/app
-      - /app/node_modules
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    command: npm run generate:database-types
 
 volumes:
   postgres_data:

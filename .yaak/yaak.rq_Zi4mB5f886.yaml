@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Zi4mB5f886
 createdAt: 2025-07-30T21:54:42.570995
-updatedAt: 2025-07-30T22:22:15.789159
+updatedAt: 2025-08-02T09:27:40.237619
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -24,5 +24,5 @@ headers:
 method: POST
 name: Lola (percentile%, required cards)
 sortPriority: -1753529739888.998
-url: ${[ base_url ]}/recommendations
+url: ${[ base_url ]}/public/recommendations
 urlParameters: []

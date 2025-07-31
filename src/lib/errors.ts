@@ -3,13 +3,13 @@ import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
 import { statusText } from "./http-status.ts";
 
-export function errorHandler(err: unknown, ctx: Context) {
+export function errorHandler(err: unknown, c: Context) {
   if (err instanceof HTTPException) {
-    return ctx.json(formatError(err), err.status);
+    return c.json(formatError(err), err.status);
   }
 
   console.error(err);
-  return ctx.json({ message: statusText(500) }, 500);
+  return c.json({ message: statusText(500) }, 500);
 }
 
 function formatError(err: HTTPException) {

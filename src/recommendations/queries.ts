@@ -1,68 +1,19 @@
-import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
-import { z } from "zod";
-import { db } from "./db/db.ts";
-import { getCardById } from "./db/queries.ts";
-import config from "./lib/config.ts";
-import { zodValidator } from "./lib/validation.ts";
+import type { Database } from "../db/db.ts";
+import { getCardById } from "../db/queries/get-card-by-id.ts";
+import type { RecommendationsRequest } from "./schemas.ts";
 
-const routes = new Hono();
-
-const recommendationsRequestSchema = z.object({
-  analyze_side_decks: z.boolean().optional().default(true),
-  analysis_algorithm: z
-    .enum(["absolute percentage", "percentile rank"])
-    .optional()
-    .default("absolute percentage"),
-  canonical_investigator_code: z.string().max(73),
-  date_range: z
-    .tuple([z.coerce.date(), z.coerce.date()])
-    .optional()
-    .default([
-      new Date(config.RECOMMENDATIONS_CUTOFF),
-      firstDayOfNextMonth(new Date()),
-    ]),
-  required_cards: z.array(z.string()).optional().default([]),
-});
-
-const recommendationsResponseSchema = z.object({
-  data: z.object({
-    recommendations: z.object({
-      decks_analyzed: z.number(),
-      recommendations: z.array(
-        z.object({
-          card_code: z.string().max(36),
-          recommendation: z.number(),
-        }),
-      ),
-    }),
-  }),
-});
-
-type RecommendationsRequest = z.infer<typeof recommendationsRequestSchema>;
-
-routes.post(
-  "/",
-  zodValidator("json", recommendationsRequestSchema),
-  async (c) => {
-    const recommendations = await getRecommendations(c.req.valid("json"));
-
-    const res = recommendationsResponseSchema.parse({
-      data: { recommendations },
-    });
-
-    return c.json(res);
-  },
-);
-
-export async function getRecommendations(req: RecommendationsRequest) {
+export async function getRecommendations(
+  db: Database,
+  req: RecommendationsRequest,
+) {
   const backInvestigatorCode = req.canonical_investigator_code
     .split("-")
     .at(-1);
 
   const investigator = backInvestigatorCode
-    ? await getCardById(backInvestigatorCode)
+    ? await getCardById(db, backInvestigatorCode)
     : undefined;
 
   if (investigator?.type_code !== "investigator") {
@@ -75,8 +26,8 @@ export async function getRecommendations(req: RecommendationsRequest) {
 
   const { decksAnalyzed, recommendations } = await (req.analysis_algorithm ===
   "absolute percentage"
-    ? getRecommendationsByAbsolutePercentage(req)
-    : getRecommendationsByPercentileRank(req));
+    ? getRecommendationsByAbsolutePercentage(db, req)
+    : getRecommendationsByPercentileRank(db, req));
 
   return {
     decks_analyzed: decksAnalyzed,
@@ -85,6 +36,7 @@ export async function getRecommendations(req: RecommendationsRequest) {
 }
 
 async function getRecommendationsByAbsolutePercentage(
+  db: Database,
   req: RecommendationsRequest,
 ) {
   const { analyze_side_decks, canonical_investigator_code } = req;
@@ -141,9 +93,8 @@ async function getRecommendationsByAbsolutePercentage(
   const inclusions = inclusionsQueryResult.rows;
 
   const recommendations = inclusions.reduce((acc, inc) => {
-    const recommendation = Math.round(
-      (inc.decks_with_card / inc.decks_analyzed) * 100_00
-    ) / 100;
+    const recommendation =
+      Math.round((inc.decks_with_card / inc.decks_analyzed) * 100_00) / 100;
 
     if (recommendation > 0.75) {
       acc.push({
@@ -158,7 +109,10 @@ async function getRecommendationsByAbsolutePercentage(
   return formatRecommendations(inclusions[0]?.decks_analyzed, recommendations);
 }
 
-async function getRecommendationsByPercentileRank(req: RecommendationsRequest) {
+async function getRecommendationsByPercentileRank(
+  db: Database,
+  req: RecommendationsRequest,
+) {
   type InclusionResult = {
     canonical_investigator_code: string;
     card_code: string;
@@ -251,29 +205,13 @@ async function getRecommendationsByPercentileRank(req: RecommendationsRequest) {
   `.execute(db);
 
   const inclusions = inclusionsQueryResult.rows;
-  
+
   const recommendations = inclusions.map((inc) => ({
     card_code: inc.card_code,
     recommendation: inc.percentile_rank,
   }));
 
   return formatRecommendations(inclusions[0]?.decks_analyzed, recommendations);
-}
-
-function firstDayOfNextMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 1);
-}
-
-function requiredCardsConditions(req: RecommendationsRequest) {
-  const { analyze_side_decks, required_cards } = req;
-
-  if (!required_cards.length) return sql``;
-
-  const requiredCardsArray = sql`ARRAY[${sql.join(required_cards)}]::text[]`;
-
-  return analyze_side_decks
-    ? sql`AND (slots ?& ${requiredCardsArray} OR side_slots ?& ${requiredCardsArray})`
-    : sql`AND (slots ?& ${requiredCardsArray})`;
 }
 
 function deckFilterConditions(req: RecommendationsRequest) {
@@ -307,4 +245,14 @@ function formatRecommendations(
     : { decksAnalyzed, recommendations };
 }
 
-export default routes;
+function requiredCardsConditions(req: RecommendationsRequest) {
+  const { analyze_side_decks, required_cards } = req;
+
+  if (!required_cards.length) return sql``;
+
+  const requiredCardsArray = sql`ARRAY[${sql.join(required_cards)}]::text[]`;
+
+  return analyze_side_decks
+    ? sql`AND (slots ?& ${requiredCardsArray} OR side_slots ?& ${requiredCardsArray})`
+    : sql`AND (slots ?& ${requiredCardsArray})`;
+}

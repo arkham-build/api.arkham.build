@@ -1,7 +1,7 @@
 import { cors } from "hono/cors";
-import config from "./config.ts";
+import type { Config } from "./config.ts";
 
-export function corsMiddleware() {
+export function corsMiddleware(config: Config) {
   const allowedOrigins = config.CORS_ORIGINS.split(",")
     .map((origin) => origin.trim())
     .filter((origin) => origin.length > 0);

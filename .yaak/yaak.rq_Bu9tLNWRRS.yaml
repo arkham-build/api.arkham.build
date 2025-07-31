@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Bu9tLNWRRS
 createdAt: 2025-07-26T11:35:39.891994
-updatedAt: 2025-07-31T12:47:01.960973
+updatedAt: 2025-08-02T09:27:24.835201
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -10,7 +10,7 @@ authenticationType: null
 body:
   text: |-
     {
-      "canonical_investigator_code": "02001-02001"
+      "canonical_investigator_code": "03006-03006"
     }
 bodyType: application/json
 description: ''
@@ -22,5 +22,5 @@ headers:
 method: POST
 name: Lola (abs%)
 sortPriority: -1753529739889.0
-url: ${[ base_url ]}/recommendations
+url: ${[ base_url ]}/public/recommendations
 urlParameters: []

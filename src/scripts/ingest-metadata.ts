@@ -1,20 +1,21 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: <explanation> */
-import { db } from "../db/db.ts";
-import factionsSeed from "../db/seeds/factions.json" with { type: "json" };
-import subtypesSeed from "../db/seeds/subtypes.json" with { type: "json" };
-import typesSeed from "../db/seeds/types.json" with { type: "json" };
+/** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script */
+
+import { applySqlFiles } from "../db/db.helpers.ts";
+import { getDatabase } from "../db/db.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
-import config from "../lib/config.ts";
+import { configFromEnv } from "../lib/config.ts";
 import { gql } from "../lib/gql.ts";
 
-await ingest();
+const config = configFromEnv();
+const db = getDatabase(config);
 
+await ingest();
 await db.destroy();
 
 async function ingest() {
   console.time("fetching-metadata");
   const { data } = await gql<QueryResponse>(
-    config.METADATA_INGEST_URL,
+    config.INGEST_URL_METADATA,
     query(),
   );
   console.timeEnd("fetching-metadata");
@@ -32,9 +33,8 @@ async function ingest() {
     await tx.deleteFrom("cycle").execute();
     await tx.deleteFrom("taboo_set").execute();
 
-    await tx.insertInto("faction").values(factionsSeed).execute();
-    await tx.insertInto("subtype").values(subtypesSeed).execute();
-    await tx.insertInto("type").values(typesSeed).execute();
+    await applySqlFiles(tx, "../db/seeds");
+
     await tx
       .insertInto("data_version")
       .values(data.all_card_updated as any[])
@@ -46,7 +46,6 @@ async function ingest() {
       .execute();
 
     await tx.insertInto("cycle").values(serialize(data.cycle)).execute();
-
     await tx.insertInto("pack").values(serialize(data.pack)).execute();
 
     await tx

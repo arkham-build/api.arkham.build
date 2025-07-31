@@ -1,21 +1,10 @@
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import { secureHeaders } from "hono/secure-headers";
-import { bodyLimitMiddleware } from "./lib/body-limit.ts";
-import config from "./lib/config.ts";
-import { corsMiddleware } from "./lib/cors.ts";
-import { errorHandler } from "./lib/errors.ts";
-import recommendations from "./recommendations.ts";
+import { appFactory } from "./app.ts";
+import { configSchema } from "./lib/config.ts";
 
-const app = new Hono();
+const config = configSchema.parse(process.env);
 
-app.use(secureHeaders());
-app.use(bodyLimitMiddleware());
-app.use(corsMiddleware());
-
-app.route("/recommendations", recommendations);
-
-app.onError(errorHandler);
+const app = appFactory(config);
 
 serve(
   {

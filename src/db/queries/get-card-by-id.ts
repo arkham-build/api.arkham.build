@@ -1,9 +1,10 @@
 import assert from "node:assert";
 import type { Selectable } from "kysely";
-import { db } from "./db.ts";
-import type { Card } from "./schema.types.ts";
+import type { Database } from "../db.ts";
+import type { Card } from "../schema.types.ts";
 
 export async function getCardById(
+  db: Database,
   code: string,
   tabooSetId?: number,
 ): Promise<Selectable<Card>> {
