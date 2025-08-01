@@ -1,1 +1,12 @@
+.yaak
+.github
 node_modules
+
+.dockerignore
+.env*
+.gitignore
+biome.json
+docker-compose*
+Dockerfile
+Makefile
+vitest.config.ts

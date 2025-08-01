@@ -144,7 +144,7 @@ export interface Cycle {
   code: string;
   position: number;
   real_name: string;
-  translations: { locale: string; name: string; }[];
+  translations: { locale: string; name: string }[];
 }
 
 export interface DataVersion {
@@ -158,7 +158,7 @@ export interface EncounterSet {
   code: string;
   pack_code: string;
   real_name: string;
-  translations: { locale: string; name: string; }[];
+  translations: { locale: string; name: string }[];
 }
 
 export interface Faction {
@@ -172,7 +172,7 @@ export interface Pack {
   cycle_code: string;
   position: number;
   real_name: string;
-  translations: { locale: string; name: string; }[];
+  translations: { locale: string; name: string }[];
 }
 
 export interface SchemaMigrations {

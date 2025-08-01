@@ -14,7 +14,7 @@ const database = getTestDatabase();
 
 await database.transaction().execute(async (tx) => {
   await applySqlFiles(tx, "../db/migrations");
-  await applySqlFiles(tx, "../db/seeds");  
+  await applySqlFiles(tx, "../db/seeds");
 });
 
 await database.destroy();
