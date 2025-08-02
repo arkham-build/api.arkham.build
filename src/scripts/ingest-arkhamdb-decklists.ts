@@ -1,7 +1,14 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script */
-import type { Insertable } from "kysely";
+/** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script. */
+
+import assert from "node:assert";
+import { createReadStream, createWriteStream } from "node:fs";
+import { unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { parse } from "@fast-csv/parse";
+import type { Insertable, Transaction } from "kysely";
 import { getDatabase } from "../db/db.ts";
-import type { ArkhamdbDecklist } from "../db/schema.types.ts";
+import type { ArkhamdbDecklist, DB } from "../db/schema.types.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
 import { configFromEnv } from "../lib/config.ts";
 
@@ -12,70 +19,140 @@ await ingest();
 await db.destroy();
 
 async function ingest() {
-  console.time("fetching-decks");
-  const [authors, rawDecklists, stats] = await Promise.all([
-    fetchJsonFile<ApiAuthor[]>("authors"),
-    fetchJsonFile<ApiDecklist[]>("decklists"),
-    fetchJsonFile<ApiStats[]>("decklist_stats"),
+  console.time("downloading-files");
+  const [authorsFile, decklistsFile, statsFile] = await Promise.all([
+    downloadCsvFile("authors"),
+    downloadCsvFile("decklists"),
+    downloadCsvFile("decklist_stats"),
   ]);
-  console.timeEnd("fetching-decks");
+  console.timeEnd("downloading-files");
 
-  console.time("recreating-data");
-  const statsByDecklistId = new Map(stats.map((s) => [s.decklist_id, s]));
+  const tempFiles = [authorsFile, decklistsFile, statsFile];
 
-  const users = authors.map((author) => ({
-    id: author.id,
-    name: author.name,
-    reputation: author.reputation,
-  }));
+  const [stats, weaknessCodes] = await Promise.all([
+    loadCsvIntoMemory<ApiStats>(statsFile),
+    getWeaknessCodes(),
+  ]);
 
-  const decklists = rawDecklists
-    .map((_deck) => {
-      const meta = JSON.parse(_deck.meta || "{}");
-      const backCode = meta.alternate_back || _deck.investigator_code;
-      const frontCode = meta.alternate_front || _deck.investigator_code;
-      const deck = _deck as unknown as Insertable<ArkhamdbDecklist>;
-      deck.meta = meta;
-      deck.like_count = statsByDecklistId.get(deck.id)?.likes ?? 0;
-      deck.canonical_investigator_code = `${frontCode}-${backCode}`;
-      deck.slots = parseSlots(_deck.slots) as Record<string, number>;
-      deck.side_slots = parseSlots(_deck.sideSlots);
-      deck.ignore_deck_limit_slots = parseSlots(_deck.ignoreDeckLimitSlots);
+  try {
+    console.time("processing-data");
 
-      delete (deck as any).sideSlots;
-      delete (deck as any).ignoreDeckLimitSlots;
+    await db.transaction().execute(async (tx) => {
+      await tx.deleteFrom("arkhamdb_decklist_duplicate").execute();
+      await tx.deleteFrom("arkhamdb_decklist").execute();
+      await tx.deleteFrom("arkhamdb_user").execute();
 
-      return deck;
-    })
-    .sort((a, b) => (b.like_count as number) - (a.like_count as number));
+      await streamCsvAndInsert(
+        authorsFile,
+        (row: ApiAuthor) => ({
+          id: Number(row.id),
+          name: row.name,
+          reputation: Number(row.reputation),
+        }),
+        tx,
+        "arkhamdb_user",
+        10000,
+      );
 
-  const duplicates = await getDuplicateDecks(decklists);
+      const statsByDecklistId = new Map(
+        stats.map((s) => [Number(s.decklist_id), Number(s.likes)]),
+      );
 
-  await db.transaction().execute(async (tx) => {
-    await tx.deleteFrom("arkhamdb_decklist_duplicate").execute();
-    await tx.deleteFrom("arkhamdb_decklist").execute();
-    await tx.deleteFrom("arkhamdb_user").execute();
+      const decklistsByHash = new Map<
+        string,
+        { id: number; likeCount: number }[]
+      >();
 
-    for (const chunk of chunkArray(users, 10000)) {
-      await tx.insertInto("arkhamdb_user").values(chunk).execute();
-    }
+      await streamCsvAndInsert(
+        decklistsFile,
+        (deck: ApiDecklist) => {
+          const meta = JSON.parse(deck.meta || "{}");
+          const backCode = meta.alternate_back || deck.investigator_code;
+          const frontCode = meta.alternate_front || deck.investigator_code;
+          const slots = parseSlots(deck.slots) as Record<string, number>;
+          const sideSlots = parseSlots(deck.sideSlots);
+          const ignoreDeckLimitSlots = parseSlots(deck.ignoreDeckLimitSlots);
+          const likeCount = statsByDecklistId.get(Number(deck.id)) ?? 0;
+          const slotsHash = hashSlots(slots, weaknessCodes);
+          const sideSlotsHash = hashSlots(sideSlots, weaknessCodes);
+          const hash = `${deck.canonical_investigator_code}-${slotsHash}-${sideSlotsHash}`;
 
-    for (const chunk of chunkArray(decklists, 2500)) {
-      await tx
-        .insertInto("arkhamdb_decklist")
-        .values(serialize(chunk))
-        .execute();
-    }
+          delete (deck as any).sideSlots;
+          delete (deck as any).ignoreDeckLimitSlots;
 
-    for (const chunk of chunkArray(duplicates, 25000)) {
-      await tx
-        .insertInto("arkhamdb_decklist_duplicate")
-        .values(chunk)
-        .execute();
-    }
-  });
+          const deckInfo = {
+            id: deck.id,
+            likeCount: likeCount,
+          };
 
-  console.timeEnd("recreating-data");
+          if (decklistsByHash.has(hash)) {
+            // biome-ignore lint/style/noNonNullAssertion: checked above
+            decklistsByHash.get(hash)!.push(deckInfo);
+          } else {
+            decklistsByHash.set(hash, [deckInfo]);
+          }
+
+          const formatted: Insertable<ArkhamdbDecklist> = {
+            ...deck,
+            id: Number(deck.id),
+            canonical_investigator_code: `${frontCode}-${backCode}`,
+            user_id: Number(deck.user_id),
+            meta,
+            like_count: likeCount,
+            slots,
+            side_slots: sideSlots,
+            ignore_deck_limit_slots: ignoreDeckLimitSlots,
+            xp: deck.xp ? Number(deck.xp ?? 0) : null,
+            xp_spent: deck.xp_spent ? Number(deck.xp_spent ?? 0) : null,
+            xp_adjustment: deck.xp_adjustment
+              ? Number(deck.xp_adjustment ?? 0)
+              : null,
+            taboo_id: deck.taboo_id ? Number(deck.taboo_id) : null,
+            previous_deck: deck.previous_deck
+              ? Number(deck.previous_deck)
+              : null,
+            next_deck: deck.next_deck ? Number(deck.next_deck) : null,
+          };
+
+          console.log(formatted);
+
+          return formatted;
+        },
+        tx,
+        "arkhamdb_decklist",
+        2500,
+      );
+
+      const duplicates = Array.from(decklistsByHash.values()).reduce(
+        (acc, curr) => {
+          if (curr.length === 1) return acc;
+
+          const sorted = curr.sort((a, b) => b.likeCount - a.likeCount);
+
+          const original = sorted[0];
+
+          for (const dupe of curr.slice(1)) {
+            acc.push({ duplicate_of: original!.id, id: dupe.id });
+          }
+
+          return acc;
+        },
+        [] as Duplicate[],
+      );
+
+      // Insert duplicates in chunks
+      for (const chunk of chunkArray(duplicates, 25000)) {
+        await tx
+          .insertInto("arkhamdb_decklist_duplicate")
+          .values(chunk)
+          .execute();
+      }
+    });
+
+    console.timeEnd("processing-data");
+  } finally {
+    await Promise.all(tempFiles.map((f) => unlink(f).catch(console.error)));
+  }
 }
 
 type Duplicate = {
@@ -96,22 +173,118 @@ type ApiStats = {
 };
 
 type ApiDecklist = {
-  like_count: number;
-  meta: string;
-  canonical_investigator_code: string;
-  investigator_code: string;
   id: number;
+  name: string;
+  date_creation: string;
+  date_update: string | null;
+  description_md: string | null;
+  user_id: string;
+  investigator_code: string;
+  investigator_name: string;
   slots: string;
   sideSlots: string | null;
   ignoreDeckLimitSlots: string | null;
+  xp: number | null;
+  xp_spent: number | null;
+  xp_adjustment: number | null;
+  exile_string: string | null;
+  taboo_id: number | null;
+  meta: string;
+  tags: string | null;
+  previous_deck: number | null;
+  next_deck: number | null;
+  canonical_investigator_code: string;
 };
 
-async function fetchJsonFile<T>(name: string) {
+async function downloadCsvFile(name: string): Promise<string> {
   const res = await fetch(
-    `${config.INGEST_URL_ARKHAMDB_DECKLISTS}/${name}.json`,
+    `${config.INGEST_URL_ARKHAMDB_DECKLISTS}/${name}.csv`,
   );
+
   if (!res.ok) throw new Error(`Failed to fetch ${name}: ${res.statusText}`);
-  return res.json() as T;
+
+  const tempFilePath = join(tmpdir(), `${name}-${Date.now()}.csv`);
+  const writeStream = createWriteStream(tempFilePath);
+
+  await new Promise((resolve, reject) => {
+    assert(res.body, `Response body is null for ${name}`);
+
+    res.body.pipeTo(
+      new WritableStream({
+        write(chunk) {
+          writeStream.write(chunk);
+        },
+        close() {
+          writeStream.end();
+          resolve(undefined);
+        },
+        abort(error) {
+          writeStream.destroy();
+          reject(error);
+        },
+      }),
+    );
+  });
+
+  return tempFilePath;
+}
+
+async function streamCsvAndInsert<T, U>(
+  filePath: string,
+  transform: (row: T) => U,
+  tx: Transaction<DB>,
+  tableName: string,
+  batchSize: number,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const batch: U[] = [];
+
+    createReadStream(filePath)
+      .pipe(parse({ headers: true }))
+      .on("data", async (row: T) => {
+        const transformed = transform(row);
+        batch.push(transformed);
+
+        if (batch.length >= batchSize) {
+          try {
+            await tx
+              .insertInto(tableName as keyof DB)
+              .values(batch.splice(0, batchSize))
+              .execute();
+          } catch (error) {
+            reject(error);
+            return;
+          }
+        }
+      })
+      .on("end", async () => {
+        try {
+          if (batch.length > 0) {
+            await tx
+              .insertInto(tableName as keyof DB)
+              .values(batch)
+              .execute();
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      })
+      .on("error", reject);
+  });
+}
+
+async function loadCsvIntoMemory<T>(filePath: string): Promise<T[]> {
+  return new Promise((resolve, reject) => {
+    const results: T[] = [];
+    createReadStream(filePath)
+      .pipe(parse({ headers: true }))
+      .on("data", (row: T) => {
+        results.push(row);
+      })
+      .on("end", () => resolve(results))
+      .on("error", reject);
+  });
 }
 
 function parseSlots(
@@ -137,41 +310,6 @@ async function getWeaknessCodes() {
   return new Set(res.map((r) => r.code));
 }
 
-async function getDuplicateDecks(decklists: Insertable<ArkhamdbDecklist>[]) {
-  const weaknessCodes = await getWeaknessCodes();
-
-  const decklistsByHash = new Map<string, number[]>();
-
-  for (const decklist of decklists) {
-    const slots = hashSlots(decklist.slots, weaknessCodes);
-    const sideSlots = hashSlots(decklist.side_slots, weaknessCodes);
-    const hash = `${decklist.canonical_investigator_code}-${slots}-${sideSlots}`;
-    if (decklistsByHash.has(hash)) {
-      // biome-ignore lint/style/noNonNullAssertion: checked above
-      decklistsByHash.get(hash)!.push(decklist.id);
-    } else {
-      decklistsByHash.set(hash, [decklist.id]);
-    }
-  }
-
-  const duplicates = Array.from(decklistsByHash.values()).reduce(
-    (acc, curr) => {
-      if (curr.length === 1) return acc;
-
-      const duplicate_of = curr[0] as number;
-
-      for (const id of curr.slice(1)) {
-        acc.push({ duplicate_of, id });
-      }
-
-      return acc;
-    },
-    [] as Duplicate[],
-  );
-
-  return duplicates;
-}
-
 function hashSlots(
   slots: Record<string, number> | null | undefined,
   weaknessCodes: Set<string>,
@@ -181,21 +319,4 @@ function hashSlots(
     .filter(([key]) => !weaknessCodes.has(key))
     .sort(([a], [b]) => a.localeCompare(b));
   return entries.map(([k, v]) => `${k}:${v}`).join(",");
-}
-
-function serialize(data: Record<string, unknown>[]): any[] {
-  return data.map((row) => {
-    const serializedRow: Record<string, unknown> = {};
-
-    for (const [key, value] of Object.entries(row)) {
-      if (typeof value === "object" && value !== null) {
-        const s = JSON.stringify(value);
-        serializedRow[key] = s;
-      } else {
-        serializedRow[key] = value;
-      }
-    }
-
-    return serializedRow;
-  });
 }
