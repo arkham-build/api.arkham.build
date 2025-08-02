@@ -1,6 +1,7 @@
 .yaak
 .github
 node_modules
+.git
 
 .dockerignore
 .env*
@@ -10,3 +11,5 @@ docker-compose*
 Dockerfile
 Makefile
 vitest.config.ts
+README.md
+*.md
