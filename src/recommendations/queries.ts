@@ -25,7 +25,7 @@ export async function getRecommendations(
   }
 
   const { decksAnalyzed, recommendations } = await (req.analysis_algorithm ===
-  "absolute percentage"
+  "absolute_rank"
     ? getRecommendationsByAbsolutePercentage(db, req)
     : getRecommendationsByPercentileRank(db, req));
 
@@ -194,7 +194,6 @@ async function getRecommendationsByPercentileRank(
           JOIN by_investigator ON by_card_used.canonical_investigator_code = by_investigator.canonical_investigator_code
         WHERE
           (by_card_used.deck_count / by_investigator.total_decks) > 0.0075
-          AND by_investigator.total_decks > 10
       )
     SELECT
       *

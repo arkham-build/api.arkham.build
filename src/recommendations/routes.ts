@@ -1,6 +1,5 @@
 import { Hono } from "hono";
 import type { HonoEnv } from "../lib/hono-env.ts";
-import { zodValidator } from "../lib/validation.ts";
 import { getRecommendations } from "./queries.ts";
 import {
   recommendationsRequestSchema,
@@ -9,21 +8,28 @@ import {
 
 const routes = new Hono<HonoEnv>();
 
-routes.post(
-  "/",
-  zodValidator("json", recommendationsRequestSchema),
-  async (c) => {
-    const recommendations = await getRecommendations(
-      c.get("db"),
-      c.req.valid("json"),
-    );
+routes.get("/:canonical_investigator_code", async (c) => {
+  const dateRange = c.req.query("date_range_start")
+    ? [c.req.query("date_range_start"), c.req.query("date_range_end")]
+    : undefined;
 
-    const res = recommendationsResponseSchema.parse({
-      data: { recommendations },
-    });
+  const req = recommendationsRequestSchema.parse({
+    canonical_investigator_code: c.req.param("canonical_investigator_code"),
+    date_range: dateRange,
+    analyze_side_decks: c.req.query("analyze_side_decks") !== "false",
+    analysis_algorithm: c.req.query("algo"),
+    required_cards: c.req.queries("card"),
+  });
 
-    return c.json(res);
-  },
-);
+  const recommendations = await getRecommendations(c.get("db"), req);
+
+  const res = recommendationsResponseSchema.parse({
+    data: { recommendations },
+  });
+
+  c.header("Cache-Control", "public, max-age=86400, immutable");
+
+  return c.json(res);
+});
 
 export default routes;

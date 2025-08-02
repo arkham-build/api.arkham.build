@@ -3,9 +3,9 @@ import { z } from "zod";
 export const recommendationsRequestSchema = z.object({
   analyze_side_decks: z.boolean().optional().default(true),
   analysis_algorithm: z
-    .enum(["absolute percentage", "percentile rank"])
+    .enum(["absolute_rank", "percentile_rank"])
     .optional()
-    .default("absolute percentage"),
+    .default("absolute_rank"),
   canonical_investigator_code: z.string().max(73),
   date_range: z
     .tuple([z.coerce.date(), z.coerce.date()])

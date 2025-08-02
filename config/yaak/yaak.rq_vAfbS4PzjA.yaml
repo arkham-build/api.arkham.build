@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_vAfbS4PzjA
 createdAt: 2025-07-30T19:39:22.590474
-updatedAt: 2025-08-02T17:18:57.752855
+updatedAt: 2025-08-02T23:33:59.128801
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -11,7 +11,7 @@ body:
   text: |-
     {
       "canonical_investigator_code": "03006-03006",
-      "analysis_algorithm": "percentile rank"
+      "analysis_algorithm": "percentile_rank"
       }
 bodyType: application/json
 description: ''
@@ -20,8 +20,16 @@ headers:
   name: Content-Type
   value: application/json
   id: ehIAYH35yh
-method: POST
-name: Lola (percentile%)
-sortPriority: -1753529739888.999
-url: ${[ base_url ]}/v2/public/recommendations
-urlParameters: []
+method: GET
+name: percentile_rank
+sortPriority: 3000.0
+url: ${[ base_url ]}/v2/public/recommendations/03006-03006
+urlParameters:
+- enabled: true
+  name: algo
+  value: percentile_rank
+  id: 5U8j8pCfJJ
+- enabled: true
+  name: ''
+  value: ''
+  id: sNmA2TCsIA

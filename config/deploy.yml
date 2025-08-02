@@ -53,7 +53,7 @@ builder:
 env:
   clear:
     <<: *postgres_env_clear
-    CORS_ORIGINS: "https://arkham.build,*.arkham-build-prod.pages.dev"
+    CORS_ORIGINS: "https://arkham.build,*.arkham-build-prod.pages.dev,http://localhost:3000"
     DBMATE_MIGRATIONS_DIR: /app/src/db/migrations
     DBMATE_SCHEMA_FILE: /app/src/db/schema.sql
     METADATA_LOCALES: "de,en,es,fr,ko,pl,ru,zh"
