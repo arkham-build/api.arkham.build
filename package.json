@@ -1,5 +1,5 @@
 {
-  "name": "api.arkham.build",
+  "name": "api-v2.arkham.build",
   "version": "0.0.1",
   "main": "src/index.ts",
   "type": "module",
@@ -8,13 +8,13 @@
   },
   "scripts": {
     "check": "tsc",
-    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "dev": "node --watch --experimental-strip-types src/main.ts",
     "fmt": "biome check --write",
     "generate:database-types": "kysely-codegen --out-file src/db/schema.types.ts",
     "ingest:metadata": "node --experimental-strip-types src/scripts/ingest-metadata.ts",
     "ingest:arkhamdb-decklists": "node --experimental-strip-types src/scripts/ingest-arkhamdb-decklists.ts",
     "lint": "biome check",
-    "start": "node --experimental-strip-types src/index.ts",
+    "start": "node --experimental-strip-types src/main.ts",
     "test": "vitest"
   },
   "devDependencies": {

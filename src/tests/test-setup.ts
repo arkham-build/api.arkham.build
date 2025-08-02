@@ -2,24 +2,21 @@ import {
   PostgreSqlContainer,
   type StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
-import { afterAll } from "vitest";
+import { afterAll, beforeAll } from "vitest";
 import { applySqlFiles } from "../db/db.helpers.ts";
 import { getTestDatabase } from "./test-utils.ts";
 
-const container = new PostgreSqlContainer("postgres:16-alpine");
-
-globalThis.postgresContainer = await container.start();
-
-const database = getTestDatabase();
-
-await database.transaction().execute(async (tx) => {
-  await applySqlFiles(tx, "../db/migrations");
-  await applySqlFiles(tx, "../db/seeds");
+beforeAll(async () => {
+  const container = new PostgreSqlContainer("postgres:16-alpine");
+  globalThis.postgresContainer = await container.start();
+  const database = getTestDatabase();
+  await database.transaction().execute(async (tx) => {
+    await applySqlFiles(tx, "../db/migrations");
+    await applySqlFiles(tx, "../db/seeds");
+  });
+  await database.destroy();
+  await globalThis.postgresContainer.snapshot();
 });
-
-await database.destroy();
-
-await globalThis.postgresContainer.snapshot();
 
 afterAll(async () => {
   await globalThis.postgresContainer?.stop();

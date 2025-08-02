@@ -1,7 +1,7 @@
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
 import type { Config } from "../lib/config.ts";
-import type { DB } from "./schema.types.ts"; // this is the Database interface we defined earlier
+import type { DB } from "./schema.types.ts";
 
 export type Database = Kysely<DB>;
 

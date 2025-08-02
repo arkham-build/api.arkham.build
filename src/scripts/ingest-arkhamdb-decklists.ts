@@ -132,6 +132,7 @@ async function ingest() {
           const original = sorted[0];
 
           for (const dupe of curr.slice(1)) {
+            // biome-ignore lint/style/noNonNullAssertion: length checked above
             acc.push({ duplicate_of: original!.id, id: dupe.id });
           }
 
