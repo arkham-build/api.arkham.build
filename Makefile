@@ -30,8 +30,5 @@ migrate-down:
 migrate-types:
 	docker compose run --build --rm -it app npm run generate:database-types
 
-ingest-metadata:
-	docker compose run --build --rm -it app npm run ingest:metadata
-
-ingest-arkhamdb-decklists:
-	docker compose run --build --rm -it app npm run ingest:arkhamdb-decklists
+ingest:
+	docker compose run --build --rm -it app npm run ingest
