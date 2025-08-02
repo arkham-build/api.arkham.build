@@ -11,4 +11,4 @@
 
 # Run database migrations after deployment
 echo "Running database migrations..."
-kamal app exec --reuse "npm run migrate"
+kamal app exec --reuse "npm run dbmate -- up"

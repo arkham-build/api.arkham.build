@@ -1,4 +1,4 @@
-.PHONY: up down build logs shell clean migrate-new migrate-up migrate-down migrate-types ingest-metadata ingest-arkhamdb-decklists
+.PHONY: up down build logs shell clean migrate-new migrate-up migrate-down migrate-types ingest ingest-metadata ingest-arkhamdb-decklists
 
 up:
 	COMPOSE_MENU=0 docker compose up --build
@@ -19,16 +19,22 @@ clean:
 	docker compose down -v --remove-orphans
 
 migrate-new:
-	docker compose run --build --rm -it migrate new $(NAME)
+	docker compose run --build --rm -it app npm run dbmate -- new $(NAME)
 
 migrate-up:
-	docker compose run --build --rm -it migrate up
+	docker compose run --build --rm -it app npm run dbmate -- up
 
 migrate-down:
-	docker compose run --build --rm -it migrate down
+	docker compose run --build --rm -it app npm run dbmate -- down
 
 migrate-types:
 	docker compose run --build --rm -it app npm run generate:database-types
 
 ingest:
 	docker compose run --build --rm -it app npm run ingest
+
+ingest-metadata:
+	docker compose run --build --rm -it app npm run ingest:metadata
+
+ingest-arkhamdb-decklists:
+	docker compose run --build --rm -it app npm run ingest:arkhamdb-decklists

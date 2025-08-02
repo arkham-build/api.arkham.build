@@ -13,7 +13,7 @@ export async function getCardById(
   const card = await db
     .selectFrom("card")
     .selectAll()
-    .where("id", "=", id)
+    .where("id", "=", ({ fn, val }) => fn<string>("resolve_card", [val(id)]))
     .limit(1)
     .executeTakeFirst();
 

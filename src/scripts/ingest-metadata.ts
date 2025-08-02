@@ -58,6 +58,27 @@ async function ingest() {
     for (const chunk of chunkArray(data.all_card, 500)) {
       await tx.insertInto("card").values(serialize(chunk)).execute();
     }
+
+    const cardResolutions = data.all_card.reduce(
+      (acc, c) => {
+        if (c.duplicate_of_code || c.alternate_of_code) {
+          acc.push({
+            id: c.code,
+            resolves_to: (c.duplicate_of_code || c.alternate_of_code) as string,
+          });
+        }
+        return acc;
+      },
+      [] as { id: string; resolves_to: string }[],
+    );
+
+    for (const chunk of chunkArray(cardResolutions, 30000)) {
+      await tx
+        .insertInto("card_resolution")
+        .onConflict((oc) => oc.doNothing())
+        .values(chunk)
+        .execute();
+    }
   });
 
   console.timeEnd("recreating-data");
@@ -71,8 +92,11 @@ type CardEncounterSet = {
 
 type QueryResponse = {
   all_card: {
+    code: string;
     encounter_code?: string;
     pack_code: string;
+    alternate_of_code?: string;
+    duplicate_of_code?: string;
   }[];
   all_card_updated: Record<string, unknown>[];
   card_encounter_set: CardEncounterSet[];

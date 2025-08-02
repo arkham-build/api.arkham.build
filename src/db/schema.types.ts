@@ -140,6 +140,11 @@ export interface Card {
   xp: number | null;
 }
 
+export interface CardResolution {
+  id: string;
+  resolves_to: string;
+}
+
 export interface Cycle {
   code: string;
   position: number;
@@ -201,6 +206,7 @@ export interface DB {
   arkhamdb_decklist_duplicate: ArkhamdbDecklistDuplicate;
   arkhamdb_user: ArkhamdbUser;
   card: Card;
+  card_resolution: CardResolution;
   cycle: Cycle;
   data_version: DataVersion;
   encounter_set: EncounterSet;

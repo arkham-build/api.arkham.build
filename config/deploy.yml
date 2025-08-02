@@ -13,10 +13,10 @@ image: arkham-build/api.arkham.build
 # Deploy to these servers.
 servers:
   web:
-    - 64.225.68.241
+    - 67.205.167.213
   cron:
     hosts:
-      - 64.225.68.241
+      - 67.205.167.213
     cmd: sh -c "(env && cat config/crontab) | crontab - && crond -f"
     options:
       memory: 768m
@@ -99,7 +99,7 @@ ssh:
 accessories:
   db:
     image: postgres:16-alpine
-    host: 64.225.68.241
+    host: 67.205.167.213
     port: 5432
     env:
       clear:

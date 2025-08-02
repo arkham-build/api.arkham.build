@@ -21,12 +21,13 @@ WORKDIR /app
 
 ENV NODE_ENV=development
 ENV PORT=3000
+COPY --from=dbmate /usr/local/bin/dbmate /usr/local/bin/dbmate
 
-COPY src ./src
 COPY package.json package-lock.json ./
-COPY .kysely*.json ./
-
 RUN npm ci
+
+COPY .kysely*.json ./
+COPY src ./src
 
 EXPOSE $PORT
 CMD ["npm", "run", "dev"]

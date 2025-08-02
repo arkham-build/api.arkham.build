@@ -250,7 +250,7 @@ function requiredCardsConditions(req: RecommendationsRequest) {
 
   if (!required_cards.length) return sql``;
 
-  const requiredCardsArray = sql`ARRAY[${sql.join(required_cards)}]::text[]`;
+  const requiredCardsArray = sql`ARRAY[${sql.join(required_cards.map((c) => sql`resolve_card(${c})`))}]::text[]`;
 
   return analyze_side_decks
     ? sql`AND (slots ?& ${requiredCardsArray} OR side_slots ?& ${requiredCardsArray})`

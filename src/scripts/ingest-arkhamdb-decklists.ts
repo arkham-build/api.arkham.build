@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { parse } from "@fast-csv/parse";
 import type { Insertable, Transaction } from "kysely";
 import { connectionString, getDatabase } from "../db/db.ts";
+import { getAllCardResolutions } from "../db/queries/get-all-card-resolutions.ts";
 import type { ArkhamdbDecklist, DB } from "../db/schema.types.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
 import { configFromEnv } from "../lib/config.ts";
@@ -20,11 +21,18 @@ await db.destroy();
 
 async function ingest() {
   console.time("downloading-files");
-  const [authorsFile, decklistsFile, statsFile] = await Promise.all([
-    downloadCsvFile("authors"),
-    downloadCsvFile("decklists"),
-    downloadCsvFile("decklist_stats"),
-  ]);
+  const [authorsFile, decklistsFile, statsFile, resolutions] =
+    await Promise.all([
+      downloadCsvFile("authors"),
+      downloadCsvFile("decklists"),
+      downloadCsvFile("decklist_stats"),
+      getAllCardResolutions(db).then((res) =>
+        res.reduce((acc, curr) => {
+          acc.set(curr.id, curr.resolves_to);
+          return acc;
+        }, new Map<string, string>()),
+      ),
+    ]);
   console.timeEnd("downloading-files");
 
   const tempFiles = [authorsFile, decklistsFile, statsFile];
@@ -67,15 +75,18 @@ async function ingest() {
         decklistsFile,
         (deck: ApiDecklist) => {
           const meta = JSON.parse(deck.meta || "{}");
-          const backCode = meta.alternate_back || deck.investigator_code;
-          const frontCode = meta.alternate_front || deck.investigator_code;
           const slots = parseSlots(deck.slots) as Record<string, number>;
           const sideSlots = parseSlots(deck.sideSlots);
           const ignoreDeckLimitSlots = parseSlots(deck.ignoreDeckLimitSlots);
           const likeCount = statsByDecklistId.get(Number(deck.id)) ?? 0;
           const slotsHash = hashSlots(slots, weaknessCodes);
           const sideSlotsHash = hashSlots(sideSlots, weaknessCodes);
-          const hash = `${deck.canonical_investigator_code}-${slotsHash}-${sideSlotsHash}`;
+
+          const backCode = meta.alternate_back || deck.investigator_code;
+          const frontCode = meta.alternate_front || deck.investigator_code;
+          const canonicalInvestigatorCode = `${resolveId(frontCode, resolutions)}-${resolveId(backCode, resolutions)}`;
+
+          const hash = `${canonicalInvestigatorCode}-${slotsHash}-${sideSlotsHash}`;
 
           delete (deck as any).sideSlots;
           delete (deck as any).ignoreDeckLimitSlots;
@@ -95,7 +106,7 @@ async function ingest() {
           const formatted: Insertable<ArkhamdbDecklist> = {
             ...deck,
             id: Number(deck.id),
-            canonical_investigator_code: `${frontCode}-${backCode}`,
+            canonical_investigator_code: canonicalInvestigatorCode,
             user_id: Number(deck.user_id),
             meta,
             like_count: likeCount,
@@ -318,4 +329,8 @@ function hashSlots(
     .filter(([key]) => !weaknessCodes.has(key))
     .sort(([a], [b]) => a.localeCompare(b));
   return entries.map(([k, v]) => `${k}:${v}`).join(",");
+}
+
+function resolveId(code: string, cardResolutions: Map<string, string>): string {
+  return cardResolutions.get(code) ?? code;
 }
