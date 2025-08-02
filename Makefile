@@ -19,16 +19,16 @@ clean:
 	docker compose down -v --remove-orphans
 
 migrate-new:
-	docker compose run --rm -it migrate new $(NAME)
+	docker compose run --build --rm -it migrate new $(NAME)
 
 migrate-up:
-	docker compose run --rm -it migrate up
+	docker compose run --build --rm -it migrate up
 
 migrate-down:
-	docker compose run --rm -it migrate down
+	docker compose run --build --rm -it migrate down
 
 migrate-types:
-	docker compose run --rm -it app npm run generate:database-types
+	docker compose run --build --rm -it app npm run generate:database-types
 
 ingest-metadata:
 	docker compose run --build --rm -it app npm run ingest:metadata
