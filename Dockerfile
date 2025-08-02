@@ -27,13 +27,16 @@ FROM base AS production
 ENV NODE_ENV=production
 ENV PORT=3000
 
-COPY --from=base /app/node_modules ./node_modules
+COPY --from=base --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY . .
+
+COPY --from=dbmate /usr/local/bin/dbmate /usr/local/bin/dbmate
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
-
+RUN npm prune --omit dev
 RUN chown -R nodejs:nodejs /app
+
 USER nodejs
 
 EXPOSE $PORT
