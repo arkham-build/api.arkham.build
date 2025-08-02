@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Bu9tLNWRRS
 createdAt: 2025-07-26T11:35:39.891994
-updatedAt: 2025-08-02T10:46:20.379019
+updatedAt: 2025-08-02T17:16:49.646637
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -22,5 +22,5 @@ headers:
 method: POST
 name: Lola (abs%)
 sortPriority: -1753529739889.0
-url: ${[ base_url ]}/public/recommendations
+url: ${[ base_url ]}/v2/public/recommendations
 urlParameters: []

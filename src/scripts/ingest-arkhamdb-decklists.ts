@@ -114,8 +114,6 @@ async function ingest() {
             next_deck: deck.next_deck ? Number(deck.next_deck) : null,
           };
 
-          console.log(formatted);
-
           return formatted;
         },
         tx,

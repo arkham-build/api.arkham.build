@@ -46,7 +46,10 @@ COPY src ./src
 
 COPY --from=dbmate /usr/local/bin/dbmate /usr/local/bin/dbmate
 
-RUN rm -rf /var/cache/apk/* && \
+COPY config/crontab /app/config/crontab
+
+RUN apk add --update busybox-suid && \
+    rm -rf /var/cache/apk/* && \
     addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \
     chown -R nodejs:nodejs /app

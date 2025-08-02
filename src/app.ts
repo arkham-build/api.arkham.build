@@ -9,7 +9,7 @@ import type { HonoEnv } from "./lib/hono-env.ts";
 import recommendations from "./recommendations/routes.ts";
 
 export function appFactory(config: Config, database: Database) {
-  const app = new Hono<HonoEnv>().basePath("/v2");
+  const app = new Hono<HonoEnv>();
 
   app.use(secureHeaders());
   app.use(bodyLimitMiddleware());
@@ -23,7 +23,12 @@ export function appFactory(config: Config, database: Database) {
 
   const pub = new Hono<HonoEnv>();
   pub.route("/recommendations", recommendations);
-  app.route("/public", pub);
+
+  app.route("/v2/public", pub);
+
+  app.get("/up", (c) => {
+    return c.text("ok");
+  });
 
   app.onError(errorHandler);
 

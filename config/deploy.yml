@@ -5,7 +5,6 @@ service: api-arkham-build
 x-postgres_env_clear: &postgres_env_clear
   POSTGRES_DB: api_arkham_build_production
   POSTGRES_USER: postgres
-  POSTGRES_HOST: db
   POSTGRES_PORT: 5432
 
 # Name of the container image.
@@ -14,18 +13,21 @@ image: arkham-build/api.arkham.build
 # Deploy to these servers.
 servers:
   web:
-    - 192.168.0.1
+    - 64.225.68.241
   cron:
     hosts:
-      - 192.168.0.1
-    cmd: bash -c "(env && cat config/crontab) | crontab - && cron -f"
+      - 64.225.68.241
+    cmd: sh -c "(env && cat config/crontab) | crontab - && crond -f"
+    options:
+      memory: 250m
+      cpus: 0.5
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
 # Remove this section when using multiple web servers and ensure you terminate SSL at your load balancer.
 #
 # Note: If using Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
 proxy:
-  ssl: false
+  ssl: true
   host: api-v2.arkham.build
   # Proxy connects to your container on port 80 by default.
   app_port: 3000
@@ -52,12 +54,13 @@ env:
   clear:
     <<: *postgres_env_clear
     CORS_ORIGINS: "https://arkham.build,*.arkham-build-prod.pages.dev"
-    DBMATE_MIGRATIONS_DIR: /db/migrations
-    DBMATE_SCHEMA_FILE: /db/schema.sql
+    DBMATE_MIGRATIONS_DIR: /app/src/db/migrations
+    DBMATE_SCHEMA_FILE: /app/src/db/schema.sql
     METADATA_LOCALES: "de,en,es,fr,ko,pl,ru,zh"
     METADATA_VERSION: 8
     NODE_ENV: production
     PORT: 3000
+    POSTGRES_HOST: api-arkham-build-db
   secret:
     - INGEST_URL_ARKHAMDB_DECKLISTS
     - INGEST_URL_METADATA
@@ -71,8 +74,8 @@ env:
 
 # Use a different ssh user than root
 #
-# ssh:
-#   user: app
+ssh:
+  user: app
 
 # Use a persistent storage volume.
 #
@@ -96,7 +99,7 @@ env:
 accessories:
   db:
     image: postgres:16-alpine
-    host: 192.168.0.1
+    host: 64.225.68.241
     port: 5432
     env:
       clear:
@@ -106,9 +109,13 @@ accessories:
     directories:
       - data:/var/lib/postgresql/data
 
-# Configure logging
 logging:
   driver: "json-file"
   options:
     max-size: "100m"
     max-file: "3"
+
+aliases:
+  console: app exec --interactive --reuse --primary "sh"
+  ingest: app exec --primary --reuse "npm run ingest"
+  logs: app logs --follow
