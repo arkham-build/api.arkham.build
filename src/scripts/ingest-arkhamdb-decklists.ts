@@ -7,13 +7,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "@fast-csv/parse";
 import type { Insertable, Transaction } from "kysely";
-import { getDatabase } from "../db/db.ts";
+import { connectionString, getDatabase } from "../db/db.ts";
 import type { ArkhamdbDecklist, DB } from "../db/schema.types.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
 import { configFromEnv } from "../lib/config.ts";
 
 const config = configFromEnv();
-const db = getDatabase(config);
+const db = getDatabase(connectionString(config));
 
 await ingest();
 await db.destroy();

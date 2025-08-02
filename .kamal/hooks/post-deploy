@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# These environment variables are available:
+# KAMAL_RECORDED_AT
+# KAMAL_PERFORMER
+# KAMAL_VERSION
+# KAMAL_HOSTS
+# KAMAL_ROLES (if set)
+# KAMAL_DESTINATION (if set)
+# KAMAL_RUNTIME
+
+# Run database migrations after deployment
+echo "Running database migrations..."
+$KAMAL_COMMAND app exec --reuse "DATABASE_URL=postgres://\$POSTGRES_USER:\$POSTGRES_PASSWORD@\$POSTGRES_HOST:\$POSTGRES_PORT/\$POSTGRES_DB?sslmode=disable dbmate up"

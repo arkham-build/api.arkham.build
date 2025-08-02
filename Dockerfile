@@ -15,7 +15,7 @@ RUN npm ci --only=production && \
     npm cache clean --force
 
 # Development stage
-FROM node:22-alpine AS development
+FROM base AS development
 
 WORKDIR /app
 
@@ -32,7 +32,7 @@ EXPOSE $PORT
 CMD ["npm", "run", "dev"]
 
 # Production stage
-FROM node:22-alpine AS production
+FROM base AS production
 
 WORKDIR /app
 

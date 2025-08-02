@@ -1,13 +1,13 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script */
 
 import { applySqlFiles } from "../db/db.helpers.ts";
-import { getDatabase } from "../db/db.ts";
+import { connectionString, getDatabase } from "../db/db.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
 import { configFromEnv } from "../lib/config.ts";
 import { gql } from "../lib/gql.ts";
 
 const config = configFromEnv();
-const db = getDatabase(config);
+const db = getDatabase(connectionString(config));
 
 await ingest();
 await db.destroy();

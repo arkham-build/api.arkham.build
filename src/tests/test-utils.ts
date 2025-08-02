@@ -7,26 +7,23 @@ import { configFromEnv } from "../lib/config.ts";
 export function getTestDatabase() {
   const container = globalThis.postgresContainer;
   assert(container, "PostgreSQL container not started.");
-
-  return getDatabase({
-    DATABASE_URL: container.getConnectionUri(),
-  });
+  return getDatabase(container.getConnectionUri());
 }
 
 function getDependencies() {
   const container = globalThis.postgresContainer;
   assert(container, "PostgreSQL container not started.");
 
-  const env = configFromEnv();
+  const config = configFromEnv({
+    POSTGRES_DB: container.getDatabase(),
+    POSTGRES_HOST: container.getHost(),
+    POSTGRES_PORT: container.getPort(),
+    POSTGRES_USER: container.getUsername(),
+    POSTGRES_PASSWORD: container.getPassword(),
+  });
 
   const db = getTestDatabase();
-  const app = appFactory(
-    {
-      ...env,
-      DATABASE_URL: container.getConnectionUri(),
-    },
-    db,
-  );
+  const app = appFactory(config, db);
 
   return { app, db };
 }

@@ -5,12 +5,14 @@ import type { DB } from "./schema.types.ts";
 
 export type Database = Kysely<DB>;
 
-export function getDatabase(config: Pick<Config, "DATABASE_URL">): Database {
+export function connectionString(config: Config) {
+  return `postgres://${config.POSTGRES_USER}:${config.POSTGRES_PASSWORD}@${config.POSTGRES_HOST}:${config.POSTGRES_PORT}/${config.POSTGRES_DB}?sslmode=disable`;
+}
+
+export function getDatabase(connectionString: string): Database {
   return new Kysely<DB>({
     dialect: new PostgresDialect({
-      pool: new Pool({
-        connectionString: config.DATABASE_URL,
-      }),
+      pool: new Pool({ connectionString }),
     }),
   });
 }
