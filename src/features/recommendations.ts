@@ -1,8 +1,67 @@
+import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { sql } from "kysely";
+import z from "zod";
 import type { Database } from "../db/db.ts";
 import { getCardById } from "../db/queries/get-card-by-id.ts";
-import type { RecommendationsRequest } from "./schemas.ts";
+import {
+  dateRangeFromQuery,
+  dateRangeSchema,
+} from "../lib/decklists-helpers.ts";
+import type { HonoEnv } from "../lib/hono-env.ts";
+
+const recommendationsRequestSchema = z.object({
+  analyze_side_decks: z.boolean().optional().default(true),
+  analysis_algorithm: z
+    .enum(["absolute_rank", "percentile_rank"])
+    .optional()
+    .default("absolute_rank"),
+  canonical_investigator_code: z.string().max(73),
+  date_range: dateRangeSchema,
+  required_cards: z.array(z.string()).optional().default([]),
+});
+
+const recommendationsResponseSchema = z.object({
+  data: z.object({
+    recommendations: z.object({
+      decks_analyzed: z.number(),
+      recommendations: z.array(
+        z.object({
+          card_code: z.string().max(36),
+          recommendation: z.number(),
+        }),
+      ),
+    }),
+  }),
+});
+
+type RecommendationsRequest = z.infer<typeof recommendationsRequestSchema>;
+
+export function recommendationsRouter() {
+  const routes = new Hono<HonoEnv>();
+
+  routes.get("/:canonical_investigator_code", async (c) => {
+    const req = recommendationsRequestSchema.parse({
+      analyze_side_decks: c.req.query("analyze_side_decks") !== "false",
+      analysis_algorithm: c.req.query("algo"),
+      canonical_investigator_code: c.req.param("canonical_investigator_code"),
+      date_range: dateRangeFromQuery(c),
+      required_cards: c.req.queries("card"),
+    });
+
+    const recommendations = await getRecommendations(c.get("db"), req);
+
+    const res = recommendationsResponseSchema.parse({
+      data: { recommendations },
+    });
+
+    c.header("Cache-Control", "public, max-age=86400, immutable");
+
+    return c.json(res);
+  });
+
+  return routes;
+}
 
 export async function getRecommendations(
   db: Database,
@@ -215,21 +274,11 @@ async function getRecommendationsByPercentileRank(
 
 function deckFilterConditions(req: RecommendationsRequest) {
   const { date_range } = req;
-
   return sql`
-    NOT EXISTS (
-      SELECT 1 FROM arkhamdb_decklist_duplicate
-      WHERE arkhamdb_decklist_duplicate.id = arkhamdb_decklist.id
-    )
+    NOT is_duplicate
     AND date_creation >= ${date_range[0]}
     AND date_creation <= ${date_range[1]}
-    AND (
-      like_count > 0
-      OR (
-        next_deck IS NULL
-        AND previous_deck IS null
-      )
-    )
+    AND is_searchable
   `;
 }
 

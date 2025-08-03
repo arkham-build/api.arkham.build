@@ -10,6 +10,22 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: resolve_card(character varying); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resolve_card(input_id character varying) RETURNS character varying
+    LANGUAGE plpgsql IMMUTABLE
+    AS $$
+BEGIN
+    RETURN COALESCE(
+        (SELECT resolves_to FROM card_resolution WHERE id = input_id),
+        input_id
+    );
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -27,6 +43,8 @@ CREATE TABLE public.arkhamdb_decklist (
     user_id integer NOT NULL,
     investigator_code character varying(36) NOT NULL,
     investigator_name character varying(255) NOT NULL,
+    is_duplicate boolean DEFAULT false,
+    is_searchable boolean GENERATED ALWAYS AS (((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL)))) STORED,
     slots jsonb NOT NULL,
     side_slots jsonb,
     ignore_deck_limit_slots jsonb,
@@ -46,13 +64,34 @@ CREATE TABLE public.arkhamdb_decklist (
 
 
 --
--- Name: arkhamdb_decklist_duplicate; Type: TABLE; Schema: public; Owner: -
+-- Name: arkhamdb_ranking_cache; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.arkhamdb_decklist_duplicate (
+CREATE TABLE public.arkhamdb_ranking_cache (
     id integer NOT NULL,
-    duplicate_of integer NOT NULL
+    max_like_count integer NOT NULL,
+    max_reputation integer NOT NULL
 );
+
+
+--
+-- Name: arkhamdb_ranking_cache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.arkhamdb_ranking_cache_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: arkhamdb_ranking_cache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.arkhamdb_ranking_cache_id_seq OWNED BY public.arkhamdb_ranking_cache.id;
 
 
 --
@@ -148,6 +187,16 @@ CREATE TABLE public.card (
     vengeance integer,
     victory integer,
     xp integer
+);
+
+
+--
+-- Name: card_resolution; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.card_resolution (
+    id character varying(36) NOT NULL,
+    resolves_to character varying(36) NOT NULL
 );
 
 
@@ -253,11 +302,10 @@ CREATE TABLE public.type (
 
 
 --
--- Name: arkhamdb_decklist_duplicate arkhamdb_decklist_duplicate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: arkhamdb_ranking_cache id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.arkhamdb_decklist_duplicate
-    ADD CONSTRAINT arkhamdb_decklist_duplicate_pkey PRIMARY KEY (id, duplicate_of);
+ALTER TABLE ONLY public.arkhamdb_ranking_cache ALTER COLUMN id SET DEFAULT nextval('public.arkhamdb_ranking_cache_id_seq'::regclass);
 
 
 --
@@ -266,6 +314,14 @@ ALTER TABLE ONLY public.arkhamdb_decklist_duplicate
 
 ALTER TABLE ONLY public.arkhamdb_decklist
     ADD CONSTRAINT arkhamdb_decklist_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: arkhamdb_ranking_cache arkhamdb_ranking_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.arkhamdb_ranking_cache
+    ADD CONSTRAINT arkhamdb_ranking_cache_pkey PRIMARY KEY (id);
 
 
 --
@@ -290,6 +346,14 @@ ALTER TABLE ONLY public.arkhamdb_user
 
 ALTER TABLE ONLY public.card
     ADD CONSTRAINT card_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: card_resolution card_resolution_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_resolution
+    ADD CONSTRAINT card_resolution_pkey PRIMARY KEY (id, resolves_to);
 
 
 --
@@ -379,13 +443,6 @@ CREATE INDEX idx_arkhamdb_decklist_date_creation ON public.arkhamdb_decklist USI
 
 
 --
--- Name: idx_arkhamdb_decklist_filter; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_arkhamdb_decklist_filter ON public.arkhamdb_decklist USING btree (canonical_investigator_code) WHERE ((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL)));
-
-
---
 -- Name: idx_arkhamdb_decklist_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -418,6 +475,20 @@ CREATE INDEX idx_arkhamdb_decklist_slots ON public.arkhamdb_decklist USING gin (
 --
 
 CREATE INDEX idx_arkhamdb_decklist_user_id ON public.arkhamdb_decklist USING btree (user_id);
+
+
+--
+-- Name: idx_arkhamdb_decklist_user_like_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_arkhamdb_decklist_user_like_date ON public.arkhamdb_decklist USING btree (user_id, like_count, date_creation);
+
+
+--
+-- Name: idx_arkhamdb_user_reputation; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_arkhamdb_user_reputation ON public.arkhamdb_user USING btree (reputation);
 
 
 --
@@ -470,10 +541,31 @@ CREATE INDEX idx_card_faction_code ON public.card USING btree (faction_code);
 
 
 --
+-- Name: idx_card_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_card_id ON public.card USING btree (id);
+
+
+--
 -- Name: idx_card_pack_code; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_card_pack_code ON public.card USING btree (pack_code);
+
+
+--
+-- Name: idx_card_resolution_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_card_resolution_id ON public.card_resolution USING btree (id);
+
+
+--
+-- Name: idx_card_resolution_target; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_card_resolution_target ON public.card_resolution USING btree (resolves_to);
 
 
 --
@@ -498,10 +590,17 @@ CREATE INDEX idx_card_type_code ON public.card USING btree (type_code);
 
 
 --
--- Name: idx_duplicates_id; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_decklist_not_duplicate; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_duplicates_id ON public.arkhamdb_decklist_duplicate USING btree (id);
+CREATE INDEX idx_decklist_not_duplicate ON public.arkhamdb_decklist USING btree (id) WHERE (NOT is_duplicate);
+
+
+--
+-- Name: idx_decklist_searchable; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_decklist_searchable ON public.arkhamdb_decklist USING btree (is_searchable) WHERE is_searchable;
 
 
 --
@@ -516,22 +615,6 @@ CREATE INDEX idx_encounter_set_pack_code ON public.encounter_set USING btree (pa
 --
 
 CREATE INDEX idx_pack_cycle_code ON public.pack USING btree (cycle_code);
-
-
---
--- Name: arkhamdb_decklist_duplicate arkhamdb_decklist_duplicate_duplicate_of_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.arkhamdb_decklist_duplicate
-    ADD CONSTRAINT arkhamdb_decklist_duplicate_duplicate_of_fkey FOREIGN KEY (duplicate_of) REFERENCES public.arkhamdb_decklist(id);
-
-
---
--- Name: arkhamdb_decklist_duplicate arkhamdb_decklist_duplicate_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.arkhamdb_decklist_duplicate
-    ADD CONSTRAINT arkhamdb_decklist_duplicate_id_fkey FOREIGN KEY (id) REFERENCES public.arkhamdb_decklist(id);
 
 
 --
@@ -615,6 +698,22 @@ ALTER TABLE ONLY public.card
 
 
 --
+-- Name: card_resolution card_resolution_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_resolution
+    ADD CONSTRAINT card_resolution_id_fkey FOREIGN KEY (id) REFERENCES public.card(id);
+
+
+--
+-- Name: card_resolution card_resolution_resolves_to_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.card_resolution
+    ADD CONSTRAINT card_resolution_resolves_to_fkey FOREIGN KEY (resolves_to) REFERENCES public.card(id);
+
+
+--
 -- Name: card card_subtype_code_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -664,5 +763,4 @@ ALTER TABLE ONLY public.pack
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20250724212919'),
-    ('20250725092618');
+    ('20250803121609');

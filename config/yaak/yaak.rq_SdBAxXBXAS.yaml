@@ -1,0 +1,30 @@
+type: http_request
+model: http_request
+id: rq_SdBAxXBXAS
+createdAt: 2025-08-03T12:31:27.813854
+updatedAt: 2025-08-03T12:31:44.846824
+workspaceId: wk_bBoraEVHnK
+folderId: fl_JK7iKL4dYC
+authentication: {}
+authenticationType: null
+body: {}
+bodyType: null
+description: ''
+headers: []
+method: GET
+name: Required cards + canonical investigator
+sortPriority: 1000.001
+url: ${[ base_url ]}/v2/public/decklists-search
+urlParameters:
+- enabled: true
+  name: canonical_investigator_code
+  value: 01001-01001
+  id: R8m37g00S6
+- enabled: true
+  name: card
+  value: '01092'
+  id: qYIMS8204q
+- enabled: true
+  name: ''
+  value: ''
+  id: M6gbZ7dZGr

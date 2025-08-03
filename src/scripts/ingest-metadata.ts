@@ -23,6 +23,7 @@ async function ingest() {
   console.time("recreating-data");
 
   await db.transaction().execute(async (tx) => {
+    await tx.deleteFrom("card_resolution").execute();
     await tx.deleteFrom("card").execute();
     await tx.deleteFrom("faction").execute();
     await tx.deleteFrom("subtype").execute();
@@ -61,10 +62,21 @@ async function ingest() {
 
     const cardResolutions = data.all_card.reduce(
       (acc, c) => {
-        if (c.duplicate_of_code || c.alternate_of_code) {
+        // parallel investigators and replacements are not cleanly marked, work around
+        if (
+          (c.duplicate_of_code || c.alt_art_investigator) &&
+          !c.code.startsWith("900") &&
+          !c.code.startsWith("910")
+        ) {
           acc.push({
             id: c.code,
-            resolves_to: (c.duplicate_of_code || c.alternate_of_code) as string,
+            resolves_to:
+              (c.duplicate_of_code as string) ||
+              (c.alternate_of_code as string) ||
+              (data.all_card.find(
+                (cc) =>
+                  cc.real_name === c.real_name && !cc.alt_art_investigator,
+              )?.code as string),
           });
         }
         return acc;
@@ -97,6 +109,8 @@ type QueryResponse = {
     pack_code: string;
     alternate_of_code?: string;
     duplicate_of_code?: string;
+    alt_art_investigator?: boolean;
+    real_name: string;
   }[];
   all_card_updated: Record<string, unknown>[];
   card_encounter_set: CardEncounterSet[];

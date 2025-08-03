@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 import type { Database } from "./db/db.ts";
+import { decklistSearchRouter } from "./features/decklists-search.ts";
+import { recommendationsRouter } from "./features/recommendations.ts";
 import { bodyLimitMiddleware } from "./lib/body-limit.ts";
 import type { Config } from "./lib/config.ts";
 import { corsMiddleware } from "./lib/cors.ts";
 import { errorHandler } from "./lib/errors.ts";
 import type { HonoEnv } from "./lib/hono-env.ts";
-import recommendations from "./recommendations/routes.ts";
 
 export function appFactory(config: Config, database: Database) {
   const app = new Hono<HonoEnv>();
@@ -22,7 +23,8 @@ export function appFactory(config: Config, database: Database) {
   });
 
   const pub = new Hono<HonoEnv>();
-  pub.route("/recommendations", recommendations);
+  pub.route("/decklists-search", decklistSearchRouter());
+  pub.route("/recommendations", recommendationsRouter());
 
   app.route("/v2/public", pub);
 

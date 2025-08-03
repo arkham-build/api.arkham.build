@@ -24,6 +24,9 @@ migrate-new:
 migrate-up:
 	docker compose run --build --rm -it app npm run dbmate -- up
 
+migrate-dump:
+	docker compose run --build --rm -it app npm run dbmate -- dump
+
 migrate-down:
 	docker compose run --build --rm -it app npm run dbmate -- down
 

@@ -33,6 +33,8 @@ export interface ArkhamdbDecklist {
   ignore_deck_limit_slots: Record<string, number> | null;
   investigator_code: string;
   investigator_name: string;
+  is_duplicate: Generated<boolean | null>;
+  is_searchable: Generated<boolean | null>;
   like_count: Generated<number>;
   meta: Json | null;
   name: string;
@@ -49,9 +51,10 @@ export interface ArkhamdbDecklist {
   xp_spent: number | null;
 }
 
-export interface ArkhamdbDecklistDuplicate {
-  duplicate_of: number;
-  id: number;
+export interface ArkhamdbRankingCache {
+  id: Generated<number>;
+  max_like_count: number;
+  max_reputation: number;
 }
 
 export interface ArkhamdbUser {
@@ -203,7 +206,7 @@ export interface Type {
 
 export interface DB {
   arkhamdb_decklist: ArkhamdbDecklist;
-  arkhamdb_decklist_duplicate: ArkhamdbDecklistDuplicate;
+  arkhamdb_ranking_cache: ArkhamdbRankingCache;
   arkhamdb_user: ArkhamdbUser;
   card: Card;
   card_resolution: CardResolution;

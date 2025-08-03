@@ -1,4 +1,4 @@
-import * as z from "zod";
+import z from "zod";
 
 export const configSchema = z.object({
   INGEST_URL_ARKHAMDB_DECKLISTS: z.string(),

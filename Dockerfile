@@ -21,10 +21,13 @@ WORKDIR /app
 
 ENV NODE_ENV=development
 ENV PORT=3000
+
 COPY --from=dbmate /usr/local/bin/dbmate /usr/local/bin/dbmate
 
 COPY package.json package-lock.json ./
 RUN npm ci
+
+RUN apk add postgresql-client
 
 COPY .kysely*.json ./
 COPY src ./src

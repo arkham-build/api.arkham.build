@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Zi4mB5f886
 createdAt: 2025-07-30T21:54:42.570995
-updatedAt: 2025-08-02T23:34:08.477316
+updatedAt: 2025-08-03T09:54:39.052037
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -14,16 +14,12 @@ body:
       "required_cards": ["", ""],
       "analysis_algorithm": "percentile rank"
     }
-bodyType: application/json
+bodyType: null
 description: ''
-headers:
-- enabled: true
-  name: Content-Type
-  value: application/json
-  id: ehIAYH35yh
+headers: []
 method: GET
-name: date range
-sortPriority: 2500.0
+name: Custom date range
+sortPriority: 2000.0
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:
 - enabled: true

@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_vAfbS4PzjA
-createdAt: 2025-07-30T19:39:22.590474
-updatedAt: 2025-08-03T09:54:46.305322
+id: rq_PrW6oXYeUN
+createdAt: 2025-08-03T09:54:15.961439
+updatedAt: 2025-08-03T09:54:58.747586
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -10,22 +10,29 @@ authenticationType: null
 body:
   text: |-
     {
-      "canonical_investigator_code": "03006-03006",
-      "analysis_algorithm": "percentile_rank"
-      }
+      "required_cards": ["", "01093"]
+    }
 bodyType: null
 description: ''
 headers: []
 method: GET
-name: Percentile Ranking
-sortPriority: 500.0
+name: Required cards (percentile ranking)
+sortPriority: 4000.001
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:
 - enabled: true
+  name: card
+  value: '01088'
+  id: rbGMCU5e2g
+- enabled: true
+  name: card
+  value: '01093'
+  id: F2iFt3XB97
+- enabled: true
   name: algo
   value: percentile_rank
-  id: 5U8j8pCfJJ
+  id: YjHUJyykHp
 - enabled: true
   name: ''
   value: ''
-  id: sNmA2TCsIA
+  id: sPJ4QEgPkd

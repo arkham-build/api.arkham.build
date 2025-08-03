@@ -10,7 +10,6 @@ import type { Insertable, Transaction } from "kysely";
 import { connectionString, getDatabase } from "../db/db.ts";
 import { getAllCardResolutions } from "../db/queries/get-all-card-resolutions.ts";
 import type { ArkhamdbDecklist, DB } from "../db/schema.types.ts";
-import { chunkArray } from "../lib/chunk-array.ts";
 import { configFromEnv } from "../lib/config.ts";
 
 const config = configFromEnv();
@@ -46,17 +45,27 @@ async function ingest() {
     console.time("processing-data");
 
     await db.transaction().execute(async (tx) => {
-      await tx.deleteFrom("arkhamdb_decklist_duplicate").execute();
       await tx.deleteFrom("arkhamdb_decklist").execute();
       await tx.deleteFrom("arkhamdb_user").execute();
 
+      let maxLikeCount = 0;
+      let maxReputation = 0;
+
       await streamCsvAndInsert(
         authorsFile,
-        (row: ApiAuthor) => ({
-          id: Number(row.id),
-          name: row.name,
-          reputation: Number(row.reputation),
-        }),
+        (row: ApiAuthor) => {
+          const reputation = Number(row.id);
+
+          if (reputation > maxReputation) {
+            maxReputation = reputation;
+          }
+
+          return {
+            id: Number(row.id),
+            name: row.name,
+            reputation,
+          };
+        },
         tx,
         "arkhamdb_user",
         10000,
@@ -95,6 +104,10 @@ async function ingest() {
             id: deck.id,
             likeCount: likeCount,
           };
+
+          if (likeCount > maxLikeCount) {
+            maxLikeCount = likeCount;
+          }
 
           if (decklistsByHash.has(hash)) {
             // biome-ignore lint/style/noNonNullAssertion: checked above
@@ -150,13 +163,28 @@ async function ingest() {
         [] as Duplicate[],
       );
 
-      // Insert duplicates in chunks
-      for (const chunk of chunkArray(duplicates, 25000)) {
+      for (const duplicate of duplicates) {
         await tx
-          .insertInto("arkhamdb_decklist_duplicate")
-          .values(chunk)
+          .updateTable("arkhamdb_decklist")
+          .set({ is_duplicate: true })
+          .where("id", "=", duplicate.id)
           .execute();
       }
+
+      await tx
+        .insertInto("arkhamdb_ranking_cache")
+        .values({
+          max_like_count: maxLikeCount,
+          max_reputation: maxReputation,
+          id: 1,
+        })
+        .onConflict((oc) =>
+          oc.column("id").doUpdateSet({
+            max_like_count: maxLikeCount,
+            max_reputation: maxReputation,
+          }),
+        )
+        .execute();
     });
 
     console.timeEnd("processing-data");

@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_Bu9tLNWRRS
 createdAt: 2025-07-26T11:35:39.891994
-updatedAt: 2025-08-02T23:33:59.120008
+updatedAt: 2025-08-03T09:53:52.005467
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -16,7 +16,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: absolute_rank
+name: Absolute ranking
 sortPriority: 0.0
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:

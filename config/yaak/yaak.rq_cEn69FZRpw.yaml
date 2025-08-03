@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_cEn69FZRpw
 createdAt: 2025-08-02T23:24:07.114533
-updatedAt: 2025-08-02T23:33:59.127244
+updatedAt: 2025-08-03T09:54:05.355415
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -16,8 +16,8 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: analyze_side_decks = false
-sortPriority: 2000.0
+name: Exclude side decks
+sortPriority: 1000.0
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:
 - enabled: true
@@ -27,4 +27,4 @@ urlParameters:
 - enabled: true
   name: ''
   value: ''
-  id: 6k0KJ6d2Ut
+  id: IHBc9ZRfT4
