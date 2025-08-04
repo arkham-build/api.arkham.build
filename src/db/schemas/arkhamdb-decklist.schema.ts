@@ -11,7 +11,7 @@ export const arkhamdbDecklistSchema = z.object({
   investigator_code: z.string(),
   investigator_name: z.string(),
   like_count: z.number(),
-  meta: z.any().nullable(),
+  meta: z.preprocess((val) => JSON.stringify(val), z.string()).nullable(), // backwards compatibility
   name: z.string(),
   next_deck: z.number().nullable(),
   previous_deck: z.number().nullable(),

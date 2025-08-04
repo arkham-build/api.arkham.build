@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_uBPqPDWQRp
 createdAt: 2025-08-03T09:52:04.515134
-updatedAt: 2025-08-03T12:44:38.276560
+updatedAt: 2025-08-03T16:44:12.566454
 workspaceId: wk_bBoraEVHnK
 folderId: fl_JK7iKL4dYC
 authentication: {}
@@ -13,22 +13,14 @@ description: ''
 headers: []
 method: GET
 name: Canonical investigator
-sortPriority: 1000.0
+sortPriority: 1500.0
 url: ${[ base_url ]}/v2/public/decklists-search
 urlParameters:
 - enabled: true
-  name: canonical_investigator_code
+  name: investigator
   value: 01001-90024
   id: R8m37g00S6
-- enabled: false
-  name: card
-  value: '01092'
-  id: qYIMS8204q
 - enabled: true
   name: ''
   value: ''
-  id: wE8C4Fh7eN
-- enabled: true
-  name: ''
-  value: ''
-  id: 9TQPrXPAgK
+  id: NAkAKTnKGQ

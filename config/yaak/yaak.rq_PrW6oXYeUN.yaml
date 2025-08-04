@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_PrW6oXYeUN
 createdAt: 2025-08-03T09:54:15.961439
-updatedAt: 2025-08-03T09:54:58.747586
+updatedAt: 2025-08-03T15:09:01.545384
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -21,11 +21,11 @@ sortPriority: 4000.001
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:
 - enabled: true
-  name: card
+  name: with
   value: '01088'
   id: rbGMCU5e2g
 - enabled: true
-  name: card
+  name: with
   value: '01093'
   id: F2iFt3XB97
 - enabled: true
@@ -35,4 +35,4 @@ urlParameters:
 - enabled: true
   name: ''
   value: ''
-  id: sPJ4QEgPkd
+  id: kajnSg0pF0

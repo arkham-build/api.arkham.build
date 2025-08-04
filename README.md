@@ -48,6 +48,8 @@ npm run lint
 npm run check
 ```
 
-## Maintenance
+You can find a pre-configured [Yaak](https://yaak.app/) workspace in `./config/yaak`.
+
+## Deploy
 
 Refer to available [Kamal commands](https://kamal-deploy.org/docs/commands/view-all-commands/) and the additional `aliases` in the `deploy.yml` file.

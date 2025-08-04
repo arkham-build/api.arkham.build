@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_nHydwSzT3x
-createdAt: 2025-08-03T09:45:25.391281
-updatedAt: 2025-08-03T16:57:26.270669
+id: rq_aSBBZym9YA
+createdAt: 2025-08-03T16:07:30.418027
+updatedAt: 2025-08-03T16:33:30.069487
 workspaceId: wk_bBoraEVHnK
 folderId: fl_JK7iKL4dYC
 authentication: {}
@@ -12,15 +12,15 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Sort by popularity (default)
-sortPriority: 9000.0
+name: Sort by date
+sortPriority: 6000.0
 url: ${[ base_url ]}/v2/public/decklists-search
 urlParameters:
-- enabled: false
-  name: ''
-  value: ''
-  id: dcGbiQUu2x
+- enabled: true
+  name: sort_by
+  value: date
+  id: D4hiI4j3yv
 - enabled: true
   name: ''
   value: ''
-  id: 89gyVcWvPm
+  id: qMGwyGNFp4

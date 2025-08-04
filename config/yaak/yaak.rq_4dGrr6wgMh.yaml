@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_4dGrr6wgMh
 createdAt: 2025-08-03T09:53:11.406169
-updatedAt: 2025-08-03T12:31:37.554613
+updatedAt: 2025-08-03T16:33:30.066262
 workspaceId: wk_bBoraEVHnK
 folderId: fl_JK7iKL4dYC
 authentication: {}
@@ -12,15 +12,19 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Required cards
+name: Excluded cards
 sortPriority: 2000.0
 url: ${[ base_url ]}/v2/public/decklists-search
 urlParameters:
 - enabled: true
-  name: card
+  name: without
   value: '01088'
   id: R8m37g00S6
 - enabled: true
+  name: with
+  value: '07038'
+  id: MGEReGyfv2
+- enabled: true
   name: ''
   value: ''
-  id: 4FDpD3DZr2
+  id: ASdxv0pFEt

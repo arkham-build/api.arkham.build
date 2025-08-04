@@ -54,7 +54,7 @@ async function ingest() {
       await streamCsvAndInsert(
         authorsFile,
         (row: ApiAuthor) => {
-          const reputation = Number(row.id);
+          const reputation = Number(row.reputation);
 
           if (reputation > maxReputation) {
             maxReputation = reputation;

@@ -17,8 +17,8 @@ export const dateRangeSchema = z
 export type DateRange = z.infer<typeof dateRangeSchema>;
 
 export function dateRangeFromQuery(c: Context) {
-  return c.req.query("date_range_start")
-    ? [c.req.query("date_range_start"), c.req.query("date_range_end")]
+  return c.req.query("date_start")
+    ? [c.req.query("date_start"), c.req.query("date_end")]
     : undefined;
 }
 
@@ -43,16 +43,6 @@ export function inDateRangeConds(
     eb(dateCreation, ">=", dateRange[0]),
     eb(dateCreation, "<=", dateRange[1]),
   ];
-}
-
-export function searchableCond(searchable: Expression<boolean | null>) {
-  const eb = expressionBuilder<DB>();
-  return eb(searchable, "=", eb.lit(true));
-}
-
-export function notDuplicateCond(isDuplicate: Expression<boolean | null>) {
-  const eb = expressionBuilder<DB>();
-  return eb(isDuplicate, "!=", eb.lit(true));
 }
 
 function requiredCardsCond(
@@ -85,6 +75,7 @@ export function requiredSlotsCond({
   const eb = expressionBuilder<DB>();
 
   const ors = [requiredCardsCond(slots, requiredCards, op)];
+
   if (analyzeSideDecks) {
     ors.push(requiredCardsCond(sideSlots, requiredCards, op));
   }

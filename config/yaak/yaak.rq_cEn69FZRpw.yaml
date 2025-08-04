@@ -2,7 +2,7 @@ type: http_request
 model: http_request
 id: rq_cEn69FZRpw
 createdAt: 2025-08-02T23:24:07.114533
-updatedAt: 2025-08-03T09:54:05.355415
+updatedAt: 2025-08-03T15:08:08.685275
 workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
@@ -21,10 +21,10 @@ sortPriority: 1000.0
 url: ${[ base_url ]}/v2/public/recommendations/03006-03006
 urlParameters:
 - enabled: true
-  name: analyze_side_decks
+  name: side_decks
   value: 'false'
   id: tb9SsmKDxv
 - enabled: true
   name: ''
   value: ''
-  id: IHBc9ZRfT4
+  id: Mh8RxPBQmP
