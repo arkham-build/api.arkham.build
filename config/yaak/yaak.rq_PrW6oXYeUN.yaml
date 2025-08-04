@@ -7,11 +7,6 @@ workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
 authenticationType: null
-body:
-  text: |-
-    {
-      "required_cards": ["", "01093"]
-    }
 bodyType: null
 description: ''
 headers: []

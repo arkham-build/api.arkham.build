@@ -116,7 +116,7 @@ async function getRecommendationsByAbsolutePercentage(
       FROM
         arkhamdb_decklist
       WHERE
-        canonical_investigator_code = ${canonical_investigator_code}
+        canonical_investigator_code = resolve_card(split_part(${canonical_investigator_code}, '-', 1)) || '-' || resolve_card(split_part(${canonical_investigator_code}, '-', 2))
         AND ${deckFilterConditions(req)} ${requiredCardsConditions(req)}
     ),
     deck_card_usage AS (

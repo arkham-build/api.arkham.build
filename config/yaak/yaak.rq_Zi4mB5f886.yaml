@@ -7,13 +7,6 @@ workspaceId: wk_bBoraEVHnK
 folderId: fl_ZDDpsyiw3d
 authentication: {}
 authenticationType: null
-body:
-  text: |-
-    {
-      "canonical_investigator_code": "03006-03006",
-      "required_cards": ["", ""],
-      "analysis_algorithm": "percentile rank"
-    }
 bodyType: null
 description: ''
 headers: []
