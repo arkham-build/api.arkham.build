@@ -1,14 +1,28 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
+import type { HonoEnv } from "./hono-env.ts";
 import { statusText } from "./http-status.ts";
 
-export function errorHandler(err: unknown, c: Context) {
+export function errorHandler(err: unknown, c: Context<HonoEnv>) {
   if (err instanceof HTTPException) {
     return c.json(formatError(err), err.status);
   }
 
-  console.error(err);
+  const config = c.get("config");
+  const logger = c.get("logger");
+  logger({
+    level: "error",
+    msg: "Unhandled error",
+    details: {
+      error: (err as Error)?.message,
+    },
+  });
+
+  if (config.NODE_ENV === "production") {
+    console.error(err);
+  }
+
   return c.json({ message: statusText(500) }, 500);
 }
 

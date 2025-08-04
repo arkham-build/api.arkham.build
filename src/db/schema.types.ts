@@ -55,6 +55,7 @@ export interface ArkhamdbRankingCache {
   id: Generated<number>;
   max_like_count: number;
   max_reputation: number;
+  updated_at: Generated<Timestamp>;
 }
 
 export interface ArkhamdbUser {

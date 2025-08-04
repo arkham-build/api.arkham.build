@@ -7,6 +7,9 @@ export const configSchema = z.object({
   INGEST_URL_METADATA: z.string(),
   METADATA_LOCALES: z.string().default("en"),
   METADATA_VERSION: z.coerce.number().int().default(8),
+  NODE_ENV: z
+    .enum(["development", "production", "test"])
+    .default("development"),
   PORT: z.coerce.number().min(1).max(65535),
   POSTGRES_DB: z.string(),
   POSTGRES_HOST: z.string(),

@@ -44,7 +44,6 @@ CREATE TABLE public.arkhamdb_decklist (
     investigator_code character varying(36) NOT NULL,
     investigator_name character varying(255) NOT NULL,
     is_duplicate boolean DEFAULT false,
-    is_searchable boolean GENERATED ALWAYS AS (((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL)))) STORED,
     slots jsonb NOT NULL,
     side_slots jsonb,
     ignore_deck_limit_slots jsonb,
@@ -59,7 +58,8 @@ CREATE TABLE public.arkhamdb_decklist (
     previous_deck integer,
     next_deck integer,
     canonical_investigator_code character varying(73) NOT NULL,
-    like_count integer DEFAULT 0 NOT NULL
+    like_count integer DEFAULT 0 NOT NULL,
+    is_searchable boolean GENERATED ALWAYS AS ((((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL))) AND ((name)::text <> ''::text) AND (length(description_md) >= 10))) STORED
 );
 
 
@@ -70,7 +70,8 @@ CREATE TABLE public.arkhamdb_decklist (
 CREATE TABLE public.arkhamdb_ranking_cache (
     id integer NOT NULL,
     max_like_count integer NOT NULL,
-    max_reputation integer NOT NULL
+    max_reputation integer NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -597,13 +598,6 @@ CREATE INDEX idx_decklist_not_duplicate ON public.arkhamdb_decklist USING btree 
 
 
 --
--- Name: idx_decklist_searchable; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_decklist_searchable ON public.arkhamdb_decklist USING btree (is_searchable) WHERE is_searchable;
-
-
---
 -- Name: idx_encounter_set_pack_code; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -763,4 +757,6 @@ ALTER TABLE ONLY public.pack
 --
 
 INSERT INTO public.schema_migrations (version) VALUES
-    ('20250803121609');
+    ('20250803121609'),
+    ('20250804132741'),
+    ('20250804133251');

@@ -1,8 +1,8 @@
 type: http_request
 model: http_request
-id: rq_T2ZnreD8qS
-createdAt: 2025-08-02T17:15:51.638210
-updatedAt: 2025-08-04T13:55:53.321395
+id: rq_FMsyNqPtQ8
+createdAt: 2025-08-04T13:59:07.690336
+updatedAt: 2025-08-04T13:59:11.820316
 workspaceId: wk_bBoraEVHnK
 folderId: fl_WSoGd3Tv2j
 authentication: {}
@@ -12,7 +12,7 @@ bodyType: null
 description: ''
 headers: []
 method: GET
-name: Health Check
-sortPriority: 0.0
-url: ${[ base_url ]}/up
+name: Version
+sortPriority: 0.001
+url: ${[ base_url ]}/version
 urlParameters: []
