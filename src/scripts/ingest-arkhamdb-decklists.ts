@@ -7,24 +7,31 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "@fast-csv/parse";
 import type { Insertable, Transaction } from "kysely";
-import { connectionString, getDatabase } from "../db/db.ts";
+import { connectionString, type Database, getDatabase } from "../db/db.ts";
 import { getAllCardResolutions } from "../db/queries/get-all-card-resolutions.ts";
 import type { ArkhamdbDecklist, DB } from "../db/schema.types.ts";
-import { configFromEnv } from "../lib/config.ts";
+import { type Config, configFromEnv } from "../lib/config.ts";
+import { log } from "../lib/logger.ts";
 
-const config = configFromEnv();
-const db = getDatabase(connectionString(config));
+try {
+  const config = configFromEnv();
+  const db = getDatabase(connectionString(config));
+  await ingest(config, db);
+  await db.destroy();
+} catch (err) {
+  log("error", "Failed to process ArkhamDB decklists", {
+    details: { error: String(err) },
+  });
+}
 
-await ingest();
-await db.destroy();
+async function ingest(config: Config, db: Database) {
+  const downloadStartedAt = Date.now();
 
-async function ingest() {
-  console.time("downloading-files");
   const [authorsFile, decklistsFile, statsFile, resolutions] =
     await Promise.all([
-      downloadCsvFile("authors"),
-      downloadCsvFile("decklists"),
-      downloadCsvFile("decklist_stats"),
+      downloadCsvFile(config, "authors"),
+      downloadCsvFile(config, "decklists"),
+      downloadCsvFile(config, "decklist_stats"),
       getAllCardResolutions(db).then((res) =>
         res.reduce((acc, curr) => {
           acc.set(curr.id, curr.resolves_to);
@@ -32,17 +39,22 @@ async function ingest() {
         }, new Map<string, string>()),
       ),
     ]);
-  console.timeEnd("downloading-files");
 
   const tempFiles = [authorsFile, decklistsFile, statsFile];
 
   const [stats, weaknessCodes] = await Promise.all([
     loadCsvIntoMemory<ApiStats>(statsFile),
-    getWeaknessCodes(),
+    getWeaknessCodes(db),
   ]);
 
+  log("info", "Downloaded ArkhamDB decklists", {
+    details: {
+      duration_ms: Date.now() - downloadStartedAt,
+    },
+  });
+
   try {
-    console.time("processing-data");
+    const processStartedAt = Date.now();
 
     await db.transaction().execute(async (tx) => {
       await tx.deleteFrom("arkhamdb_decklist").execute();
@@ -174,20 +186,26 @@ async function ingest() {
       await tx
         .insertInto("arkhamdb_ranking_cache")
         .values({
+          id: 1,
           max_like_count: maxLikeCount,
           max_reputation: maxReputation,
-          id: 1,
+          updated_at: new Date(),
         })
         .onConflict((oc) =>
           oc.column("id").doUpdateSet({
             max_like_count: maxLikeCount,
             max_reputation: maxReputation,
+            updated_at: new Date(),
           }),
         )
         .execute();
     });
 
-    console.timeEnd("processing-data");
+    log("info", "Imported ArkhamDB decklists", {
+      details: {
+        duration_ms: Date.now() - processStartedAt,
+      },
+    });
   } finally {
     await Promise.all(tempFiles.map((f) => unlink(f).catch(console.error)));
   }
@@ -234,7 +252,7 @@ type ApiDecklist = {
   canonical_investigator_code: string;
 };
 
-async function downloadCsvFile(name: string): Promise<string> {
+async function downloadCsvFile(config: Config, name: string): Promise<string> {
   const res = await fetch(
     `${config.INGEST_URL_ARKHAMDB_DECKLISTS}/${name}.csv`,
   );
@@ -338,7 +356,7 @@ function parseSlots(
   }
 }
 
-async function getWeaknessCodes() {
+async function getWeaknessCodes(db: Database) {
   const res = await db
     .selectFrom("card")
     .select("code")

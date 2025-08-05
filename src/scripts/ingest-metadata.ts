@@ -1,26 +1,37 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: not relevant for script */
 
 import { applySqlFiles } from "../db/db.helpers.ts";
-import { connectionString, getDatabase } from "../db/db.ts";
+import { connectionString, type Database, getDatabase } from "../db/db.ts";
 import { chunkArray } from "../lib/chunk-array.ts";
-import { configFromEnv } from "../lib/config.ts";
+import { type Config, configFromEnv } from "../lib/config.ts";
 import { gql } from "../lib/gql.ts";
+import { log } from "../lib/logger.ts";
 
-const config = configFromEnv();
-const db = getDatabase(connectionString(config));
+try {
+  const config = configFromEnv();
+  const db = getDatabase(connectionString(config));
+  await ingest(config, db);
+  await db.destroy();
+} catch (err) {
+  log("error", "Failed to ingest metadata", {
+    error: (err as Error).message,
+  });
 
-await ingest();
-await db.destroy();
+  process.exit(1);
+}
 
-async function ingest() {
-  console.time("fetching-metadata");
+async function ingest(config: Config, db: Database) {
+  const downloadStartedAt = Date.now();
   const { data } = await gql<QueryResponse>(
     config.INGEST_URL_METADATA,
-    query(),
+    query(config),
   );
-  console.timeEnd("fetching-metadata");
 
-  console.time("recreating-data");
+  log("info", "Downloaded metadata", {
+    duration_ms: Date.now() - downloadStartedAt,
+  });
+
+  const processStartedAt = Date.now();
 
   await db.transaction().execute(async (tx) => {
     await tx.deleteFrom("card_resolution").execute();
@@ -93,7 +104,9 @@ async function ingest() {
     }
   });
 
-  console.timeEnd("recreating-data");
+  log("info", "Imported metadata", {
+    duration_ms: Date.now() - processStartedAt,
+  });
 }
 
 type CardEncounterSet = {
@@ -119,7 +132,7 @@ type QueryResponse = {
   taboo_set: Record<string, unknown>[];
 };
 
-function query() {
+function query(config: Config) {
   const locales = config.METADATA_LOCALES.split(",").map((l) => l.trim());
   const translationLocales = locales.filter((l) => l !== "en");
 

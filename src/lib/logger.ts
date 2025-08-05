@@ -5,29 +5,43 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 
 export type LogMessage = {
   level: LogLevel;
-  msg: string;
+  message: string;
   details?: {
     [key: string]: unknown;
   };
 };
 
-export function log(message: Record<string, unknown>) {
-  message["timestamp"] = new Date().toISOString();
-  console.log(JSON.stringify(message));
-}
+export type Logger = (
+  level: LogLevel,
+  message: string,
+  details?: Record<string, unknown>,
+) => void;
 
-type Logger = (message: Omit<LogMessage, "timestamp">) => void;
+export const log: Logger = (
+  level: LogLevel,
+  message: string,
+  details?: Record<string, unknown>,
+) => {
+  console.log(
+    JSON.stringify({
+      level,
+      message,
+      details: details ?? {},
+      timestamp: new Date().toISOString(),
+    }),
+  );
+};
 
 export function logger() {
   return async (c: Context<HonoEnv>, next: Next) => {
     const requestId = c.get("requestId");
     const clientId = c.header("X-Client-Id");
 
-    const logger: Logger = (message) => {
-      message.details ??= {};
-      message.details["request_id"] = requestId;
-      message.details["client_id"] = clientId;
-      log(message);
+    const logger: Logger = (level, message, details) => {
+      details ??= {};
+      details["request_id"] = requestId;
+      details["client_id"] = clientId;
+      log(level, message, details);
     };
 
     c.set("logger", logger);
@@ -44,15 +58,12 @@ export function requestLogger() {
 
     // don't log successful health checks
     if (c.req.path !== "/version" || c.res.status !== 200) {
-      c.get("logger")({
+      c.get("logger")("info", `${c.req.method} ${c.req.path}`, {
         level: "info",
-        msg: `${c.req.method} ${c.req.path}`,
-        details: {
-          duration_ms: Date.now() - begin,
-          method: c.req.method,
-          status: c.res.status,
-          url: c.req.url,
-        },
+        duration_ms: Date.now() - begin,
+        method: c.req.method,
+        status: c.res.status,
+        url: c.req.url,
       });
     }
   };
