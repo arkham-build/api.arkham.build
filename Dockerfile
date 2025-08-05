@@ -14,6 +14,7 @@ FROM base AS deps
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY tsconfig.json ./
 
 RUN npm ci --only=production && npm cache clean --force
 

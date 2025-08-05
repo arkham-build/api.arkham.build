@@ -11,12 +11,9 @@ export function errorHandler(err: unknown, c: Context<HonoEnv>) {
 
   const config = c.get("config");
   const logger = c.get("logger");
-  logger({
-    level: "error",
-    msg: "Unhandled error",
-    details: {
-      error: (err as Error)?.message,
-    },
+
+  logger("error", "Internal server error", {
+    error: (err as Error)?.message,
   });
 
   if (config.NODE_ENV === "production") {
