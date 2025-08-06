@@ -1,22 +1,17 @@
-import { type Context, Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import type { ExpressionBuilder, SqlBool } from "kysely";
 import { type Expression, sql } from "kysely";
 import z from "zod";
-import type { Database } from "../db/db.ts";
-import type { Card, DB } from "../db/schema.types.ts";
-import { arkhamdbDecklistSchema } from "../db/schemas/arkhamdb-decklist.schema.ts";
+import type { Database } from "../../db/db.ts";
+import type { Card, DB } from "../../db/schema.types.ts";
+import { arkhamdbDecklistSchema } from "../../db/schemas/arkhamdb-decklist.schema.ts";
 import {
   canonicalInvestigatorCodeCond,
-  dateRangeFromQuery,
   dateRangeSchema,
   inDateRangeConds,
   requiredSlotsCond,
-} from "../lib/decklists-helpers.ts";
-import type { HonoEnv } from "../lib/hono-env.ts";
-import { statusText } from "../lib/http-status.ts";
+} from "../../lib/decklists-helpers.ts";
 
-const searchRequestSchema = z.object({
+export const searchRequestSchema = z.object({
   analyze_side_decks: z.optional(z.boolean()).default(true),
   author_name: z.optional(z.string().max(255)),
   canonical_investigator_code: z.optional(z.string()),
@@ -33,24 +28,7 @@ const searchRequestSchema = z.object({
   sort_dir: z.optional(z.enum(["asc", "desc"])).default("desc"),
 });
 
-function searchFromQuery(c: Context) {
-  return {
-    analyze_side_decks: c.req.query("side_decks") !== "false",
-    author_name: c.req.query("author"),
-    canonical_investigator_code: c.req.query("investigator"),
-    date_range: dateRangeFromQuery(c),
-    excluded_cards: c.req.queries("without"),
-    investigator_faction: c.req.query("investigator_faction"),
-    name: c.req.query("name"),
-    limit: c.req.query("limit"),
-    offset: c.req.query("offset"),
-    required_cards: c.req.queries("with"),
-    sort_by: c.req.query("sort_by"),
-    sort_dir: c.req.query("sort_dir"),
-  };
-}
-
-const searchResponseSchema = z.object({
+export const searchResponseSchema = z.object({
   meta: z.object({
     limit: z.number().int().min(1).max(100),
     offset: z.number().int().min(0),
@@ -70,26 +48,7 @@ const searchResponseSchema = z.object({
 
 type SearchRequest = z.infer<typeof searchRequestSchema>;
 
-export function decklistSearchRouter() {
-  const routes = new Hono<HonoEnv>();
-  routes.get("/", async (c) => {
-    const searchReq = searchRequestSchema.safeParse(searchFromQuery(c));
-    if (!searchReq.success) {
-      throw new HTTPException(400, {
-        message: statusText(400),
-        cause: searchReq.error,
-      });
-    }
-
-    const res = await search(c.get("db"), searchReq.data);
-    c.header("Cache-Control", "public, max-age=86400, immutable");
-
-    return c.json(res);
-  });
-  return routes;
-}
-
-async function search(db: Database, search: SearchRequest) {
+export async function search(db: Database, search: SearchRequest) {
   const conditions = (
     eb: ExpressionBuilder<
       DB & {
@@ -223,12 +182,12 @@ async function search(db: Database, search: SearchRequest) {
       .execute(),
   ]);
 
-  return searchResponseSchema.parse({
+  return {
     data,
     meta: {
       limit: search.limit,
       offset: search.offset,
       total: countResult?.count || data.length,
     },
-  });
+  };
 }

@@ -14,7 +14,7 @@ headers: []
 method: GET
 name: Required cards + canonical investigator
 sortPriority: 5000.0
-url: ${[ base_url ]}/v2/public/decklists-search
+url: ${[ base_url ]}/v2/public/arkhamdb-decklists/search
 urlParameters:
 - enabled: true
   name: investigator

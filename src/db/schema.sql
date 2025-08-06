@@ -59,7 +59,8 @@ CREATE TABLE public.arkhamdb_decklist (
     next_deck integer,
     canonical_investigator_code character varying(73) NOT NULL,
     like_count integer DEFAULT 0 NOT NULL,
-    is_searchable boolean GENERATED ALWAYS AS ((((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL))) AND ((name)::text <> ''::text) AND (length(description_md) >= 10))) STORED
+    is_searchable boolean GENERATED ALWAYS AS ((((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL))) AND ((name)::text <> ''::text) AND (length(description_md) >= 10))) STORED,
+    description_word_count integer DEFAULT 0 NOT NULL
 );
 
 
@@ -759,4 +760,5 @@ ALTER TABLE ONLY public.pack
 INSERT INTO public.schema_migrations (version) VALUES
     ('20250803121609'),
     ('20250804132741'),
-    ('20250804133251');
+    ('20250804133251'),
+    ('20250805131452');

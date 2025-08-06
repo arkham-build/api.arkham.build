@@ -112,6 +112,10 @@ async function ingest(config: Config, db: Database) {
           delete (deck as any).sideSlots;
           delete (deck as any).ignoreDeckLimitSlots;
 
+          const descriptionWordCount = deck.description_md
+            ? deck.description_md.split(/\s+/).length
+            : 0;
+
           const deckInfo = {
             id: deck.id,
             likeCount: likeCount,
@@ -132,6 +136,7 @@ async function ingest(config: Config, db: Database) {
             ...deck,
             id: Number(deck.id),
             canonical_investigator_code: canonicalInvestigatorCode,
+            description_word_count: descriptionWordCount,
             user_id: Number(deck.user_id),
             meta,
             like_count: likeCount,

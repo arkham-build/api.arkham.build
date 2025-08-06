@@ -38,36 +38,31 @@ const recommendationsResponseSchema = z.object({
 
 type RecommendationsRequest = z.infer<typeof recommendationsRequestSchema>;
 
-export function recommendationsRouter() {
-  const routes = new Hono<HonoEnv>();
+const routes = new Hono<HonoEnv>();
 
-  routes.get("/:canonical_investigator_code", async (c) => {
-    const req = recommendationsRequestSchema.parse({
-      analyze_side_decks: c.req.query("side_decks") !== "false",
-      analysis_algorithm: c.req.query("algo"),
-      canonical_investigator_code: c.req.param("canonical_investigator_code"),
-      date_range: dateRangeFromQuery(c),
-      required_cards: c.req.queries("with"),
-    });
-
-    const recommendations = await getRecommendations(c.get("db"), req);
-
-    const res = recommendationsResponseSchema.parse({
-      data: { recommendations },
-    });
-
-    c.header("Cache-Control", "public, max-age=86400, immutable");
-
-    return c.json(res);
+routes.get("/:canonical_investigator_code", async (c) => {
+  const req = recommendationsRequestSchema.parse({
+    analyze_side_decks: c.req.query("side_decks") !== "false",
+    analysis_algorithm: c.req.query("algo"),
+    canonical_investigator_code: c.req.param("canonical_investigator_code"),
+    date_range: dateRangeFromQuery(c),
+    required_cards: c.req.queries("with"),
   });
 
-  return routes;
-}
+  const recommendations = await getRecommendations(c.get("db"), req);
 
-export async function getRecommendations(
-  db: Database,
-  req: RecommendationsRequest,
-) {
+  const res = recommendationsResponseSchema.parse({
+    data: { recommendations },
+  });
+
+  c.header("Cache-Control", "public, max-age=86400, immutable");
+
+  return c.json(res);
+});
+
+export default routes;
+
+async function getRecommendations(db: Database, req: RecommendationsRequest) {
   const backInvestigatorCode = req.canonical_investigator_code
     .split("-")
     .at(-1);

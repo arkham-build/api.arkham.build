@@ -28,6 +28,7 @@ export interface ArkhamdbDecklist {
   date_creation: Timestamp;
   date_update: Timestamp | null;
   description_md: string | null;
+  description_word_count: Generated<number>;
   exile_string: string | null;
   id: number;
   ignore_deck_limit_slots: Record<string, number> | null;

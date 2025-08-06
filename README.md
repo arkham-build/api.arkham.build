@@ -1,16 +1,13 @@
 # api.arkham.build
 
-Node.js backend for [arkham.build](https://arkham.build). At the moment, it provides card recommendations based on aggregating ArkhamDB deck guides.
+Backend for [arkham.build](https://arkham.build). At the moment, it provides card recommendations based on aggregating ArkhamDB deck guides.
 
 ## Overview
 
-The app is a HTTP API written in [Typescript](https://www.typescriptlang.org/). It uses the [Hono](https://hono.dev/) framework and validates requests with [zod](https://zod.dev/).
-
-Data is ingested from several upstream sources with a daily cron job, stored in a [Postgres](https://www.postgresql.org/) database and accessed via [kysely](https://kysely.dev/). Migrations are handled with [dbmate](https://github.com/amacneil/dbmate).
-
-Integration tests are written in [Vitest](https://vitest.dev/) and use [Testcontainers](https://testcontainers.com/) to work against a real database.
-
-The app is deployed to a [Digital Ocean](https://www.digitalocean.com/) droplet, managed with [Kamal](https://kamal-deploy.org/).
+- The app is a Node.js HTTP API written in [Typescript](https://www.typescriptlang.org/) using the [Hono](https://hono.dev/) framework.
+- Data is ingested from several upstream sources with a daily cron job, stored in a [Postgres](https://www.postgresql.org/) database and accessed via [kysely](https://kysely.dev/). Database migrations are handled with [dbmate](https://github.com/amacneil/dbmate).
+- [Kamal](https://kamal-deploy.org/) is used to deploy the app to a [Digital Ocean](https://www.digitalocean.com/) droplet previously prepared with an [Ansible](https://docs.ansible.com/) playbook.
+- Integration tests use [Vitest](https://vitest.dev/), and [Testcontainers](https://testcontainers.com/) to work against a real database.
 
 ## Acknowledgements
 

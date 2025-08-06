@@ -12,11 +12,11 @@ export function errorHandler(err: unknown, c: Context<HonoEnv>) {
   const config = c.get("config");
   const logger = c.get("logger");
 
-  logger("error", "Internal server error", {
-    error: (err as Error)?.message,
-  });
-
   if (config.NODE_ENV === "production") {
+    logger("error", "Internal server error", {
+      error: (err as Error)?.message,
+    });
+  } else {
     console.error(err);
   }
 
