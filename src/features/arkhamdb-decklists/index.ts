@@ -1,13 +1,12 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { dateRangeFromQuery } from "../../lib/decklists-helpers.ts";
 import type { HonoEnv } from "../../lib/hono-env.ts";
 import { statusText } from "../../lib/http-status.ts";
 import {
   decklistMetaResponseSchema,
   getDecklistMeta,
 } from "./decklist-meta.ts";
-import { search, searchRequestSchema, searchResponseSchema } from "./search.ts";
+import { search, searchRequestFromQuery, searchResponseSchema } from "./decklists-search.ts";
 
 const routes = new Hono<HonoEnv>();
 
@@ -19,20 +18,7 @@ routes.use("*", async (c, next) => {
 });
 
 routes.get("/search", async (c) => {
-  const searchReq = searchRequestSchema.safeParse({
-    analyze_side_decks: c.req.query("side_decks") !== "false",
-    author_name: c.req.query("author"),
-    canonical_investigator_code: c.req.query("investigator"),
-    date_range: dateRangeFromQuery(c),
-    excluded_cards: c.req.queries("without"),
-    investigator_faction: c.req.query("investigator_faction"),
-    name: c.req.query("name"),
-    limit: c.req.query("limit"),
-    offset: c.req.query("offset"),
-    required_cards: c.req.queries("with"),
-    sort_by: c.req.query("sort_by"),
-    sort_dir: c.req.query("sort_dir"),
-  });
+  const searchReq = searchRequestFromQuery(c);
 
   if (!searchReq.success) {
     throw new HTTPException(400, {

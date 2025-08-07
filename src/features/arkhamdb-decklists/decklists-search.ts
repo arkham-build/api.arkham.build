@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import type { ExpressionBuilder, SqlBool } from "kysely";
 import { type Expression, sql } from "kysely";
 import z from "zod";
@@ -6,27 +7,48 @@ import type { Card, DB } from "../../db/schema.types.ts";
 import { arkhamdbDecklistSchema } from "../../db/schemas/arkhamdb-decklist.schema.ts";
 import {
   canonicalInvestigatorCodeCond,
+  dateRangeFromQuery,
   dateRangeSchema,
+  excludedSlotsCond,
   inDateRangeConds,
   requiredSlotsCond,
 } from "../../lib/decklists-helpers.ts";
 
 export const searchRequestSchema = z.object({
-  analyze_side_decks: z.optional(z.boolean()).default(true),
-  author_name: z.optional(z.string().max(255)),
-  canonical_investigator_code: z.optional(z.string()),
+  analyze_side_decks: z.boolean().optional().default(true),
+  author_name: z.string().max(255).optional(),
+  canonical_investigator_code: z.string().optional(),
+  description_length: z.coerce.number().int().min(0).max(1000).optional(),
   date_range: dateRangeSchema,
-  excluded_cards: z.optional(z.array(z.string())),
-  investigator_faction: z.optional(z.string()),
-  limit: z.optional(z.coerce.number().int().min(1).max(100)).default(10),
-  name: z.optional(z.string().max(255)),
-  offset: z.optional(z.coerce.number().int().min(0)).default(0),
-  required_cards: z.optional(z.array(z.string())),
+  excluded_cards: z.array(z.string()).optional(),
+  investigator_factions: z.array(z.string()).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(10),
+  name: z.string().max(255).optional(),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+  required_cards: z.array(z.string()).optional(),
   sort_by: z
-    .optional(z.enum(["user_reputation", "date", "likes", "popularity"]))
+    .enum(["user_reputation", "date", "likes", "popularity"])
     .default("popularity"),
-  sort_dir: z.optional(z.enum(["asc", "desc"])).default("desc"),
+  sort_dir: z.enum(["asc", "desc"]).optional().default("desc"),
 });
+
+export function searchRequestFromQuery(c: Context) {
+  return searchRequestSchema.safeParse({
+    analyze_side_decks: c.req.query("side_decks") !== "false",
+    author_name: c.req.query("author"),
+    canonical_investigator_code: c.req.query("investigator"),
+    description_length: c.req.query("description_length"),
+    date_range: dateRangeFromQuery(c),
+    excluded_cards: c.req.queries("without"),
+    investigator_factions: c.req.queries("faction"),
+    name: c.req.query("name"),
+    limit: c.req.query("limit"),
+    offset: c.req.query("offset"),
+    required_cards: c.req.queries("with"),
+    sort_by: c.req.query("sort_by"),
+    sort_dir: c.req.query("sort_dir"),
+  });
+}
 
 export const searchResponseSchema = z.object({
   meta: z.object({
@@ -87,22 +109,18 @@ export async function search(db: Database, search: SearchRequest) {
           sideSlots: eb.ref("arkhamdb_decklist.side_slots"),
           analyzeSideDecks: search.analyze_side_decks,
           requiredCards: search.required_cards,
-          op: "?&",
         }),
       );
     }
 
     if (search.excluded_cards) {
       conditions.push(
-        eb.not(
-          requiredSlotsCond({
-            slots: eb.ref("arkhamdb_decklist.slots"),
-            sideSlots: eb.ref("arkhamdb_decklist.side_slots"),
-            analyzeSideDecks: search.analyze_side_decks,
-            requiredCards: search.excluded_cards,
-            op: "?|",
-          }),
-        ),
+        excludedSlotsCond({
+          slots: eb.ref("arkhamdb_decklist.slots"),
+          sideSlots: eb.ref("arkhamdb_decklist.side_slots"),
+          analyzeSideDecks: search.analyze_side_decks,
+          requiredCards: search.excluded_cards,
+        }),
       );
     }
 
@@ -118,12 +136,22 @@ export async function search(db: Database, search: SearchRequest) {
       );
     }
 
-    if (search.investigator_faction) {
+    if (search.investigator_factions) {
       conditions.push(
         eb(
           eb.ref("investigator.faction_code"),
-          "=",
-          search.investigator_faction,
+          "in",
+          search.investigator_factions,
+        ),
+      );
+    }
+
+    if (search.description_length) {
+      conditions.push(
+        eb(
+          sql`char_length(arkhamdb_decklist.description_md)`,
+          ">=",
+          search.description_length,
         ),
       );
     }
@@ -179,6 +207,7 @@ export async function search(db: Database, search: SearchRequest) {
         (eb) => (search.sort_dir === "asc" ? eb.asc() : eb.desc()),
       )
       .limit(search.limit)
+      .offset(search.offset)
       .execute(),
   ]);
 

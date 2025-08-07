@@ -52,11 +52,15 @@ function requiredCardsCond(
 ) {
   const eb = expressionBuilder<DB>();
 
+  // FIXME: this currently excludes duplicates like revised core from results.
   const filter = sql<
     string[]
   >`ARRAY[${sql.join(requiredCards.map((c) => sql`resolve_card(${c})`))}]::text[]`;
 
-  return eb(slotsRef, op, filter);
+  return eb.and([
+    eb(slotsRef, "is not", sql.lit(null)),
+    eb(slotsRef, op, filter),
+  ]);
 }
 
 export function requiredSlotsCond({
@@ -64,21 +68,46 @@ export function requiredSlotsCond({
   requiredCards,
   sideSlots,
   slots,
-  op = "?|",
 }: {
   analyzeSideDecks: boolean;
   requiredCards: string[];
   sideSlots: Expression<unknown>;
   slots: Expression<unknown>;
-  op?: "?|" | "?&";
 }) {
   const eb = expressionBuilder<DB>();
 
-  const ors = [requiredCardsCond(slots, requiredCards, op)];
+  const ors = [requiredCardsCond(slots, requiredCards, "?&")];
 
   if (analyzeSideDecks) {
-    ors.push(requiredCardsCond(sideSlots, requiredCards, op));
+    ors.push(requiredCardsCond(sideSlots, requiredCards, "?&"));
   }
 
   return eb.or(ors);
+}
+
+export function excludedSlotsCond({
+  analyzeSideDecks,
+  requiredCards,
+  sideSlots,
+  slots,
+}: {
+  analyzeSideDecks: boolean;
+  requiredCards: string[];
+  sideSlots: Expression<unknown>;
+  slots: Expression<unknown>;
+}) {
+  const eb = expressionBuilder<DB>();
+
+  const and = [eb.not(requiredCardsCond(slots, requiredCards, "?|"))];
+
+  if (analyzeSideDecks) {
+    and.push(
+      eb.or([
+        eb.not(requiredCardsCond(sideSlots, requiredCards, "?|")),
+        eb(sideSlots, "is", sql.lit(null)),
+      ]),
+    );
+  }
+
+  return eb.and(and);
 }
