@@ -6,7 +6,11 @@ import {
   decklistMetaResponseSchema,
   getDecklistMeta,
 } from "./decklist-meta.ts";
-import { search, searchRequestFromQuery, searchResponseSchema } from "./decklists-search.ts";
+import {
+  search,
+  searchRequestFromQuery,
+  searchResponseSchema,
+} from "./decklists-search.ts";
 
 const routes = new Hono<HonoEnv>();
 

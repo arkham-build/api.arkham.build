@@ -96,9 +96,15 @@ async function ingest(config: Config, db: Database) {
         decklistsFile,
         (deck: ApiDecklist) => {
           const meta = JSON.parse(deck.meta || "{}");
-          const slots = parseSlots(deck.slots) as Record<string, number>;
-          const sideSlots = parseSlots(deck.sideSlots);
-          const ignoreDeckLimitSlots = parseSlots(deck.ignoreDeckLimitSlots);
+          const slots = parseSlots(deck.slots, resolutions) as Record<
+            string,
+            number
+          >;
+          const sideSlots = parseSlots(deck.sideSlots, resolutions);
+          const ignoreDeckLimitSlots = parseSlots(
+            deck.ignoreDeckLimitSlots,
+            resolutions,
+          );
           const likeCount = statsByDecklistId.get(Number(deck.id)) ?? 0;
           const slotsHash = hashSlots(slots, weaknessCodes);
           const sideSlotsHash = hashSlots(sideSlots, weaknessCodes);
@@ -350,12 +356,21 @@ async function loadCsvIntoMemory<T>(filePath: string): Promise<T[]> {
 
 function parseSlots(
   slots: string | null | undefined,
+  resolutions: Map<string, string>,
 ): Record<string, number> | null {
   if (!slots) return null;
   try {
     const val = JSON.parse(slots);
     if (!val || Array.isArray(val)) return null;
-    return val;
+
+    return Object.entries(val).reduce(
+      (acc, [key, value]) => {
+        const canonical = resolveId(key, resolutions);
+        acc[canonical] = (acc[canonical] ?? 0) + Number(value);
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
   } catch {
     return null;
   }

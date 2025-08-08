@@ -52,7 +52,6 @@ function requiredCardsCond(
 ) {
   const eb = expressionBuilder<DB>();
 
-  // FIXME: this currently excludes duplicates like revised core from results.
   const filter = sql<
     string[]
   >`ARRAY[${sql.join(requiredCards.map((c) => sql`resolve_card(${c})`))}]::text[]`;
