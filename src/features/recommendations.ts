@@ -30,6 +30,7 @@ const recommendationsResponseSchema = z.object({
         z.object({
           card_code: z.string().max(36),
           recommendation: z.number(),
+          decks_matched: z.number().optional(),
         }),
       ),
     }),
@@ -151,12 +152,11 @@ async function getRecommendationsByAbsolutePercentage(
     const recommendation =
       Math.round((inc.decks_with_card / inc.decks_analyzed) * 100_00) / 100;
 
-    if (recommendation > 0.75) {
-      acc.push({
-        card_code: inc.card_code,
-        recommendation,
-      });
-    }
+    acc.push({
+      card_code: inc.card_code,
+      decks_matched: inc.decks_with_card,
+      recommendation,
+    });
 
     return acc;
   }, [] as unknown[]);
