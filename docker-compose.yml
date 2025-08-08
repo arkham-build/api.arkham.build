@@ -17,17 +17,17 @@ services:
     volumes:
       - ./src:/app/src
 
-  cron:
-    build:
-      context: .
-      target: development
-    command: sh -c "(env && cat config/crontab) | crontab - && crond -f"
-    depends_on:
-      db:
-        condition: service_healthy
-    env_file: .env
-    volumes:
-      - ./src:/app/src
+  # cron:
+  #   build:
+  #     context: .
+  #     target: development
+  #   command: sh -c "(env && cat config/crontab) | crontab - && crond -f"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   env_file: .env
+  #   volumes:
+  #     - ./src:/app/src
 
   db:
     env_file: .env
