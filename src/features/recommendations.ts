@@ -4,10 +4,7 @@ import { sql } from "kysely";
 import z from "zod";
 import type { Database } from "../db/db.ts";
 import { getCardById } from "../db/queries/get-card-by-id.ts";
-import {
-  dateRangeFromQuery,
-  dateRangeSchema,
-} from "../lib/decklists-helpers.ts";
+import { dateRangeSchema, rangeFromQuery } from "../lib/decklists-helpers.ts";
 import type { HonoEnv } from "../lib/hono-env.ts";
 
 const recommendationsRequestSchema = z.object({
@@ -46,7 +43,7 @@ routes.get("/:canonical_investigator_code", async (c) => {
     analyze_side_decks: c.req.query("side_decks") !== "false",
     analysis_algorithm: c.req.query("algo"),
     canonical_investigator_code: c.req.param("canonical_investigator_code"),
-    date_range: dateRangeFromQuery(c),
+    date_range: rangeFromQuery("date", c),
     required_cards: c.req.queries("with"),
   });
 

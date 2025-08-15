@@ -7,10 +7,10 @@ import type { Card, DB } from "../../db/schema.types.ts";
 import { arkhamdbDecklistSchema } from "../../db/schemas/arkhamdb-decklist.schema.ts";
 import {
   canonicalInvestigatorCodeCond,
-  dateRangeFromQuery,
   dateRangeSchema,
   excludedSlotsCond,
   inDateRangeConds,
+  rangeFromQuery,
   requiredSlotsCond,
 } from "../../lib/decklists-helpers.ts";
 
@@ -38,7 +38,7 @@ export function searchRequestFromQuery(c: Context) {
     author_name: c.req.query("author"),
     canonical_investigator_code: c.req.query("investigator"),
     description_length: c.req.query("description_length"),
-    date_range: dateRangeFromQuery(c),
+    date_range: rangeFromQuery("date", c),
     excluded_cards: c.req.queries("without"),
     investigator_factions: c.req.queries("faction"),
     name: c.req.query("name"),

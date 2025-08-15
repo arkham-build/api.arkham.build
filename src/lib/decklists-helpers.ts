@@ -3,6 +3,18 @@ import { type Expression, expressionBuilder, sql } from "kysely";
 import z from "zod";
 import type { DB } from "../db/schema.types.ts";
 
+export function canonicalInvestigatorCodeCond(
+  canonicalInvestigatorCode: Expression<string>,
+  target: string,
+) {
+  const eb = expressionBuilder<DB>();
+  return eb(
+    canonicalInvestigatorCode,
+    "=",
+    sql<string>`resolve_card(split_part(${target}, '-', 1)) || '-' || resolve_card(split_part(${target}, '-', 2))`,
+  );
+}
+
 export const dateRangeSchema = z
   .tuple([z.coerce.date(), z.coerce.date()])
   .optional()
@@ -16,22 +28,31 @@ export const dateRangeSchema = z
 
 export type DateRange = z.infer<typeof dateRangeSchema>;
 
-export function dateRangeFromQuery(c: Context) {
-  return c.req.query("date_start")
-    ? [c.req.query("date_start"), c.req.query("date_end")]
-    : undefined;
-}
-
-export function canonicalInvestigatorCodeCond(
-  canonicalInvestigatorCode: Expression<string>,
-  target: string,
-) {
+export function excludedSlotsCond({
+  analyzeSideDecks,
+  requiredCards,
+  sideSlots,
+  slots,
+}: {
+  analyzeSideDecks: boolean;
+  requiredCards: string[];
+  sideSlots: Expression<unknown>;
+  slots: Expression<unknown>;
+}) {
   const eb = expressionBuilder<DB>();
-  return eb(
-    canonicalInvestigatorCode,
-    "=",
-    sql<string>`resolve_card(split_part(${target}, '-', 1)) || '-' || resolve_card(split_part(${target}, '-', 2))`,
-  );
+
+  const and = [eb.not(requiredCardsCond(slots, requiredCards, "?|"))];
+
+  if (analyzeSideDecks) {
+    and.push(
+      eb.or([
+        eb.not(requiredCardsCond(sideSlots, requiredCards, "?|")),
+        eb(sideSlots, "is", sql.lit(null)),
+      ]),
+    );
+  }
+
+  return eb.and(and);
 }
 
 export function inDateRangeConds(
@@ -44,6 +65,13 @@ export function inDateRangeConds(
     eb(dateCreation, "<=", dateRange[1]),
   ];
 }
+
+export function rangeFromQuery(key: string, c: Context) {
+  return c.req.query(`${key}_start`)
+    ? [c.req.query(`${key}_start`), c.req.query(`${key}_end`)]
+    : undefined;
+}
+
 
 function requiredCardsCond(
   slotsRef: Expression<unknown>,
@@ -82,31 +110,4 @@ export function requiredSlotsCond({
   }
 
   return eb.or(ors);
-}
-
-export function excludedSlotsCond({
-  analyzeSideDecks,
-  requiredCards,
-  sideSlots,
-  slots,
-}: {
-  analyzeSideDecks: boolean;
-  requiredCards: string[];
-  sideSlots: Expression<unknown>;
-  slots: Expression<unknown>;
-}) {
-  const eb = expressionBuilder<DB>();
-
-  const and = [eb.not(requiredCardsCond(slots, requiredCards, "?|"))];
-
-  if (analyzeSideDecks) {
-    and.push(
-      eb.or([
-        eb.not(requiredCardsCond(sideSlots, requiredCards, "?|")),
-        eb(sideSlots, "is", sql.lit(null)),
-      ]),
-    );
-  }
-
-  return eb.and(and);
 }
