@@ -60,10 +60,19 @@ export function inDateRangeConds(
   dateRange: DateRange,
 ) {
   const eb = expressionBuilder<DB>();
-  return [
-    eb(dateCreation, ">=", dateRange[0]),
-    eb(dateCreation, "<=", dateRange[1]),
-  ];
+
+  const conds = [eb(dateCreation, ">=", dateRange[0])];
+
+  const now = new Date();
+  const endDate = dateRange[1];
+  if (
+    endDate.getFullYear() !== now.getFullYear() ||
+    endDate.getMonth() !== now.getMonth()
+  ) {
+    conds.push(eb(dateCreation, "<=", endDate));
+  }
+
+  return conds;
 }
 
 export function rangeFromQuery(key: string, c: Context) {
@@ -71,7 +80,6 @@ export function rangeFromQuery(key: string, c: Context) {
     ? [c.req.query(`${key}_start`), c.req.query(`${key}_end`)]
     : undefined;
 }
-
 
 function requiredCardsCond(
   slotsRef: Expression<unknown>,
