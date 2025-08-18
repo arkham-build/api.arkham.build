@@ -1,4 +1,4 @@
-.PHONY: up down build logs shell clean migrate-new migrate-up migrate-down migrate-types ingest ingest-metadata ingest-arkhamdb-decklists
+.PHONY: up down build logs shell clean migrate-new migrate-up migrate-down migrate-types ingest ingest-metadata ingest-arkhamdb-decklists dump-test-seeds
 
 up:
 	COMPOSE_MENU=0 docker compose up --build
@@ -41,3 +41,6 @@ ingest-metadata:
 
 ingest-arkhamdb-decklists:
 	docker compose run --build --rm -it app npm run ingest:arkhamdb-decklists
+
+dump-test-seeds:
+	docker compose exec db /scripts/dump-test-seeds.sh

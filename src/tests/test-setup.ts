@@ -13,7 +13,9 @@ beforeAll(async () => {
   await database.transaction().execute(async (tx) => {
     await applySqlFiles(tx, "../db/migrations");
     await applySqlFiles(tx, "../db/seeds");
+    await applySqlFiles(tx, "../tests/seeds");
   });
+
   await database.destroy();
   await globalThis.postgresContainer.snapshot();
 });

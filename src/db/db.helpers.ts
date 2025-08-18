@@ -12,8 +12,14 @@ export async function applySqlFiles(db: Database, pathToFolder: string) {
   const folder = await fs.promises.readdir(folderPath);
 
   for (const fileName of folder) {
+    if (!fileName.endsWith(".sql")) continue;
     const filePath = path.join(folderPath, fileName);
-    const migration = await fs.promises.readFile(filePath, "utf-8");
-    await db.executeQuery(sql.raw(migration).compile(db));
+    let sqlText = await fs.promises.readFile(filePath, "utf-8");
+    
+    if (sqlText.includes("-- migrate:up")) {
+      sqlText = sqlText.split("-- migrate:down")[0] as string;
+    }
+
+    await db.executeQuery(sql.raw(sqlText).compile(db));
   }
 }

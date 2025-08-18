@@ -1,5 +1,8 @@
 .DS_Store
 
+dumps/*
+!dumps/.keep
+
 node_modules
 
 .env

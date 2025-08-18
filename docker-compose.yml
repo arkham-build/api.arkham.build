@@ -41,6 +41,8 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./src/scripts:/scripts
+      - ./src/tests/seeds:/app/src/tests/seeds
 
 volumes:
   postgres_data:
