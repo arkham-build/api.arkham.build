@@ -1,10 +1,18 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { sql } from "kysely";
+import { expressionBuilder, sql } from "kysely";
 import z from "zod";
 import type { Database } from "../db/db.ts";
 import { getCardById } from "../db/queries/get-card-by-id.ts";
-import { dateRangeSchema, rangeFromQuery } from "../lib/decklists-helpers.ts";
+import type { DB } from "../db/schema.types.ts";
+import {
+  canonicalInvestigatorCodeCond,
+  dateRangeSchema,
+  deckFilterConds,
+  inDateRangeConds,
+  rangeFromQuery,
+  requiredSlotsCond,
+} from "../lib/decklists-helpers.ts";
 import type { HonoEnv } from "../lib/hono-env.ts";
 
 const recommendationsRequestSchema = z.object({
@@ -92,67 +100,86 @@ async function getRecommendationsByAbsolutePercentage(
   db: Database,
   req: RecommendationsRequest,
 ) {
-  const { analyze_side_decks, canonical_investigator_code } = req;
+  const {
+    analyze_side_decks,
+    canonical_investigator_code,
+    date_range,
+    required_cards,
+  } = req;
 
-  type InclusionResult = {
-    card_code: string;
-    decks_analyzed: number;
-    decks_with_card: number;
-  };
+  const inclusions = await db
+    .with("investigator_decks", (db) => {
+      const eb = expressionBuilder<DB, "arkhamdb_decklist">();
 
-  const inclusionsQueryResult = await sql<InclusionResult>`
-    WITH investigator_decks AS (
-      SELECT
-        id,
-        slots,
-        side_slots
-      FROM
-        arkhamdb_decklist
-      WHERE
-        canonical_investigator_code = resolve_card(split_part(${canonical_investigator_code}, '-', 1)) || '-' || resolve_card(split_part(${canonical_investigator_code}, '-', 2))
-        AND ${deckFilterConditions(req)} ${requiredCardsConditions(req)}
-    ),
-    deck_card_usage AS (
-      SELECT
-        id,
-        jsonb_object_keys(slots) AS card_code
-      FROM
-        investigator_decks
-      UNION
-      SELECT
-        id,
-        jsonb_object_keys(side_slots) AS card_code
-      FROM
-        investigator_decks
-      WHERE
-        side_slots IS NOT NULL
-        AND ${analyze_side_decks}
-    )
-    SELECT
-      deck_card_usage.card_code,
-      (
-        SELECT
-          COUNT(*)::int
-        FROM
-          investigator_decks
-      ) AS decks_analyzed,
-      COUNT(DISTINCT deck_card_usage.id)::int AS decks_with_card
-      FROM
-        deck_card_usage
-      GROUP BY
-        deck_card_usage.card_code;
-  `.execute(db);
+      const conditions = [
+        ...deckFilterConds(eb.ref("is_duplicate"), eb.ref("is_searchable")),
+        canonicalInvestigatorCodeCond(
+          eb.ref("arkhamdb_decklist.canonical_investigator_code"),
+          canonical_investigator_code,
+        ),
+      ];
 
-  const inclusions = inclusionsQueryResult.rows;
+      if (date_range) {
+        conditions.push(
+          ...inDateRangeConds(
+            eb.ref("arkhamdb_decklist.date_creation"),
+            date_range,
+          ),
+        );
+      }
+
+      if (required_cards) {
+        conditions.push(
+          requiredSlotsCond({
+            slots: eb.ref("arkhamdb_decklist.slots"),
+            sideSlots: eb.ref("arkhamdb_decklist.side_slots"),
+            analyzeSideDecks: analyze_side_decks,
+            requiredCards: required_cards,
+          }),
+        );
+      }
+
+      return db
+        .selectFrom("arkhamdb_decklist")
+        .select(["id", "slots", "side_slots"])
+        .where(eb.and(conditions));
+    })
+    .with("deck_card_usage", (db) => {
+      const stmt = db
+        .selectFrom("investigator_decks")
+        .select(["id", sql<string>`jsonb_object_keys(slots)`.as("card_code")]);
+
+      if (!analyze_side_decks) return stmt;
+
+      return stmt.union((db) => {
+        return db
+          .selectFrom("investigator_decks")
+          .select([
+            "id",
+            sql<string>`jsonb_object_keys(side_slots)`.as("card_code"),
+          ])
+          .where("side_slots", "is not", null);
+      });
+    })
+    .selectFrom("deck_card_usage")
+    .select([
+      "deck_card_usage.card_code",
+      sql<number>`COUNT(DISTINCT deck_card_usage.id)::int`.as(
+        "decks_with_card",
+      ),
+      sql<number>`(SELECT COUNT(*)::int FROM investigator_decks)`.as(
+        "decks_analyzed",
+      ),
+    ])
+    .groupBy("deck_card_usage.card_code")
+    .execute();
 
   const recommendations = inclusions.reduce((acc, inc) => {
-    const recommendation =
-      Math.round((inc.decks_with_card / inc.decks_analyzed) * 100_00) / 100;
-
     acc.push({
       card_code: inc.card_code,
       decks_matched: inc.decks_with_card,
-      recommendation,
+      recommendation:
+        Math.round((inc.decks_with_card / inc.decks_analyzed) * 100_00) / 100,
     });
 
     return acc;
@@ -165,48 +192,42 @@ async function getRecommendationsByPercentileRank(
   db: Database,
   req: RecommendationsRequest,
 ) {
-  type InclusionResult = {
-    canonical_investigator_code: string;
-    card_code: string;
-    decks_analyzed: number;
-    decks_with_cards: number;
-    decks_per_investigator: number;
-    percentile_rank: number;
-  };
+  const { analyze_side_decks, canonical_investigator_code, required_cards } =
+    req;
 
-  const { analyze_side_decks, canonical_investigator_code } = req;
-
-  const inclusionsQueryResult = await sql<InclusionResult>`
-    WITH
-      deck_scope AS (
-        SELECT
-          id,
-          slots,
-          side_slots,
-          canonical_investigator_code
-        FROM
-          arkhamdb_decklist
-        WHERE
-          ${deckFilterConditions(req)} ${requiredCardsConditions(req)}
-      ),
-      by_investigator AS (
-        SELECT
-          canonical_investigator_code,
-          COUNT(*)::numeric AS total_decks,
-          SUM(COUNT(*)) OVER() AS decks_analyzed
-        FROM
-          deck_scope
-        GROUP BY
-          canonical_investigator_code
-      ),
-      by_card_used AS (
-        SELECT
-          card_code,
-          COUNT(*)::numeric AS deck_count,
-          canonical_investigator_code
-        FROM
-          deck_scope
-          CROSS JOIN LATERAL (
+  const inclusions = await db
+    .with("deck_scope", (db) =>
+      db
+        .selectFrom("arkhamdb_decklist")
+        .select(["id", "slots", "side_slots", "canonical_investigator_code"])
+        .where((eb) =>
+          eb.and([
+            ...deckFilterConds(eb.ref("is_duplicate"), eb.ref("is_searchable")),
+            requiredSlotsCond({
+              analyzeSideDecks: analyze_side_decks,
+              slots: eb.ref("slots"),
+              sideSlots: eb.ref("side_slots"),
+              requiredCards: required_cards,
+            }),
+          ]),
+        ),
+    )
+    .with("by_investigator", (db) =>
+      db
+        .selectFrom("deck_scope")
+        .select([
+          "canonical_investigator_code",
+          sql<number>`COUNT(*)::numeric`.as("total_decks"),
+          sql<number>`SUM(COUNT(*)) OVER()`.as("decks_analyzed"),
+        ])
+        .groupBy("canonical_investigator_code"),
+    )
+    .with("by_card_used", (db) => {
+      return db
+        .selectFrom("deck_scope")
+        .crossJoinLateral(
+          sql<{ card_code: string }>`
+          (
             SELECT
               unnest(
                 array(
@@ -220,42 +241,49 @@ async function getRecommendationsByPercentileRank(
                   ELSE ARRAY[]::TEXT[]
                 END
               ) AS card_code
-          ) cards
-        GROUP BY
-          canonical_investigator_code,
-          card_code
-      ),
-      percentiles AS (
-        SELECT
-          by_card_used.card_code,
-          by_card_used.canonical_investigator_code,
-          by_investigator.total_decks :: int AS total_decks,
-          by_investigator.decks_analyzed :: int AS decks_analyzed,
-          ROUND((by_card_used.deck_count / by_investigator.total_decks) * 100, 2) :: float AS usage_percentage,
-          ROUND(
+          )
+          `.as("cards"),
+        )
+        .select([
+          "cards.card_code",
+          "canonical_investigator_code",
+          sql<number>`COUNT(*)::numeric`.as("deck_count"),
+        ])
+        .groupBy(["canonical_investigator_code", "cards.card_code"]);
+    })
+    .with("percentiles", (db) =>
+      db
+        .selectFrom("by_card_used")
+        .innerJoin(
+          "by_investigator",
+          "by_card_used.canonical_investigator_code",
+          "by_investigator.canonical_investigator_code",
+        )
+        .select([
+          "by_card_used.card_code",
+          "by_card_used.canonical_investigator_code",
+          sql<number>`by_investigator.total_decks::int`.as("total_decks"),
+          sql<number>`by_investigator.decks_analyzed::int`.as("decks_analyzed"),
+          sql<number>`ROUND((by_card_used.deck_count / by_investigator.total_decks) * 100, 2)::float`.as(
+            "usage_percentage",
+          ),
+          sql<number>`ROUND(
             PERCENT_RANK() OVER (
-              PARTITION BY
-                by_card_used.card_code
-              ORDER BY
-                (by_card_used.deck_count / by_investigator.total_decks)
-            )::NUMERIC * 100,
-            2
-          ) :: float AS percentile_rank
-        FROM
-          by_card_used
-          JOIN by_investigator ON by_card_used.canonical_investigator_code = by_investigator.canonical_investigator_code
-        WHERE
-          (by_card_used.deck_count / by_investigator.total_decks) > 0.0075
-      )
-    SELECT
-      *
-    FROM
-      percentiles
-    WHERE
-      canonical_investigator_code = ${canonical_investigator_code}
-  `.execute(db);
-
-  const inclusions = inclusionsQueryResult.rows;
+              PARTITION BY by_card_used.card_code
+              ORDER BY (by_card_used.deck_count / by_investigator.total_decks)
+            )::NUMERIC * 100, 2
+          )::float`.as("percentile_rank"),
+        ])
+        .where(
+          sql`(by_card_used.deck_count / by_investigator.total_decks)`,
+          ">",
+          "0.0075",
+        ),
+    )
+    .selectFrom("percentiles")
+    .selectAll()
+    .where("canonical_investigator_code", "=", canonical_investigator_code)
+    .execute();
 
   const recommendations = inclusions.map((inc) => ({
     card_code: inc.card_code,
@@ -263,16 +291,6 @@ async function getRecommendationsByPercentileRank(
   }));
 
   return formatRecommendations(inclusions[0]?.decks_analyzed, recommendations);
-}
-
-function deckFilterConditions(req: RecommendationsRequest) {
-  const { date_range } = req;
-  return sql`
-    NOT is_duplicate
-    AND date_creation >= ${date_range[0]}
-    AND date_creation <= ${date_range[1]}
-    AND is_searchable
-  `;
 }
 
 function formatRecommendations(
@@ -284,16 +302,4 @@ function formatRecommendations(
   return empty
     ? { decksAnalyzed: 0, recommendations: [] }
     : { decksAnalyzed, recommendations };
-}
-
-function requiredCardsConditions(req: RecommendationsRequest) {
-  const { analyze_side_decks, required_cards } = req;
-
-  if (!required_cards.length) return sql``;
-
-  const requiredCardsArray = sql`ARRAY[${sql.join(required_cards.map((c) => sql`resolve_card(${c})`))}]::text[]`;
-
-  return analyze_side_decks
-    ? sql`AND (slots ?& ${requiredCardsArray} OR side_slots ?& ${requiredCardsArray})`
-    : sql`AND (slots ?& ${requiredCardsArray})`;
 }

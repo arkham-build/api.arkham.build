@@ -15,6 +15,17 @@ export function canonicalInvestigatorCodeCond(
   );
 }
 
+export function deckFilterConds(
+  isDuplicate: Expression<boolean | null>,
+  isSearchable: Expression<boolean | null>,
+) {
+  const eb = expressionBuilder<DB>();
+  return [
+    eb(isDuplicate, "!=", eb.lit(true)),
+    eb(isSearchable, "=", eb.lit(true)),
+  ];
+}
+
 export const dateRangeSchema = z
   .tuple([z.coerce.date(), z.coerce.date()])
   .optional()

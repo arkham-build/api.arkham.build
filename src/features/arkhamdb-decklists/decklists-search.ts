@@ -1,6 +1,6 @@
 import type { Context } from "hono";
-import type { ExpressionBuilder, SqlBool } from "kysely";
-import { type Expression, sql } from "kysely";
+import type { ExpressionBuilder } from "kysely";
+import { sql } from "kysely";
 import z from "zod";
 import type { Database } from "../../db/db.ts";
 import type { Card, DB } from "../../db/schema.types.ts";
@@ -8,6 +8,7 @@ import { arkhamdbDecklistSchema } from "../../db/schemas/arkhamdb-decklist.schem
 import {
   canonicalInvestigatorCodeCond,
   dateRangeSchema,
+  deckFilterConds,
   excludedSlotsCond,
   inDateRangeConds,
   rangeFromQuery,
@@ -79,10 +80,10 @@ export async function search(db: Database, search: SearchRequest) {
       "arkhamdb_decklist" | "arkhamdb_user" | "investigator"
     >,
   ) => {
-    const conditions: Expression<SqlBool>[] = [
-      eb(eb.ref("is_duplicate"), "!=", eb.lit(true)),
-      eb(eb.ref("is_searchable"), "=", eb.lit(true)),
-    ];
+    const conditions = deckFilterConds(
+      eb.ref("is_duplicate"),
+      eb.ref("is_searchable"),
+    );
 
     if (search.canonical_investigator_code) {
       conditions.push(
