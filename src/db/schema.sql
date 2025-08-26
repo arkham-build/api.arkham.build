@@ -41,7 +41,7 @@ CREATE TABLE public.arkhamdb_decklist (
     date_update timestamp without time zone,
     description_md text,
     user_id integer NOT NULL,
-    investigator_code character varying(36) NOT NULL,
+    investigator_code character varying(255) NOT NULL,
     investigator_name character varying(255) NOT NULL,
     is_duplicate boolean DEFAULT false,
     slots jsonb NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE public.arkhamdb_decklist (
     tags text,
     previous_deck integer,
     next_deck integer,
-    canonical_investigator_code character varying(73) NOT NULL,
+    canonical_investigator_code character varying(255) NOT NULL,
     like_count integer DEFAULT 0 NOT NULL,
     is_searchable boolean GENERATED ALWAYS AS ((((like_count > 0) OR ((next_deck IS NULL) AND (previous_deck IS NULL))) AND ((name)::text <> ''::text) AND (length(description_md) >= 10))) STORED,
     description_word_count integer DEFAULT 0 NOT NULL
@@ -113,12 +113,12 @@ CREATE TABLE public.arkhamdb_user (
 
 CREATE TABLE public.card (
     alt_art_investigator boolean DEFAULT false,
-    alternate_of_code character varying(36),
+    alternate_of_code character varying(255),
     back_illustrator character varying(255),
-    back_link_id character varying(36),
+    back_link_id character varying(255),
     clues integer,
     clues_fixed boolean DEFAULT false,
-    code character varying(36) NOT NULL,
+    code character varying(255) NOT NULL,
     cost integer,
     customization_options jsonb,
     deck_limit integer,
@@ -126,7 +126,7 @@ CREATE TABLE public.card (
     deck_requirements jsonb,
     doom integer,
     double_sided boolean DEFAULT false,
-    duplicate_of_code character varying(36),
+    duplicate_of_code character varying(255),
     encounter_code character varying(255),
     encounter_position integer,
     enemy_damage integer,
@@ -144,13 +144,13 @@ CREATE TABLE public.card (
     health integer,
     health_per_investigator boolean DEFAULT false,
     hidden boolean DEFAULT false,
-    id character varying(40) NOT NULL,
+    id character varying(255) NOT NULL,
     illustrator character varying(255),
     is_unique boolean DEFAULT false,
     linked boolean DEFAULT false,
     myriad boolean DEFAULT false,
     official boolean DEFAULT true NOT NULL,
-    pack_code character varying(36) NOT NULL,
+    pack_code character varying(255) NOT NULL,
     pack_position integer,
     permanent boolean DEFAULT false,
     "position" integer NOT NULL,
@@ -197,8 +197,8 @@ CREATE TABLE public.card (
 --
 
 CREATE TABLE public.card_resolution (
-    id character varying(36) NOT NULL,
-    resolves_to character varying(36) NOT NULL
+    id character varying(255) NOT NULL,
+    resolves_to character varying(255) NOT NULL
 );
 
 
@@ -207,7 +207,7 @@ CREATE TABLE public.card_resolution (
 --
 
 CREATE TABLE public.cycle (
-    code character varying(36) NOT NULL,
+    code character varying(255) NOT NULL,
     "position" integer NOT NULL,
     real_name character varying(255) NOT NULL,
     translations jsonb NOT NULL
@@ -232,7 +232,7 @@ CREATE TABLE public.data_version (
 
 CREATE TABLE public.encounter_set (
     code character varying(255) NOT NULL,
-    pack_code character varying(36) NOT NULL,
+    pack_code character varying(255) NOT NULL,
     real_name character varying(255) NOT NULL,
     translations jsonb NOT NULL
 );
@@ -254,8 +254,8 @@ CREATE TABLE public.faction (
 --
 
 CREATE TABLE public.pack (
-    code character varying(36) NOT NULL,
-    cycle_code character varying(36) NOT NULL,
+    code character varying(255) NOT NULL,
+    cycle_code character varying(255) NOT NULL,
     "position" integer NOT NULL,
     real_name character varying(255) NOT NULL,
     translations jsonb NOT NULL
@@ -761,4 +761,5 @@ INSERT INTO public.schema_migrations (version) VALUES
     ('20250803121609'),
     ('20250804132741'),
     ('20250804133251'),
-    ('20250805131452');
+    ('20250805131452'),
+    ('20250826075406');
