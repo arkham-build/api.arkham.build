@@ -61,8 +61,14 @@ export const searchResponseSchema = z.object({
     arkhamdbDecklistSchema
       .omit({
         description_md: true,
+        // TECH DEBT: legacy field names
+        side_slots: true,
+        ignore_deck_limit_slots: true,
       })
       .extend({
+        // TECH DEBT: legacy field names
+        ignoreDeckLimitSlots: z.record(z.string(), z.number()).nullable(),
+        sideSlots: z.record(z.string(), z.number()).nullable(),
         user_name: z.string(),
         user_reputation: z.coerce.number().int().min(0),
       }),
@@ -213,7 +219,13 @@ export async function search(db: Database, search: SearchRequest) {
   ]);
 
   return {
-    data,
+    // TECH DEBT: legacy field names
+    data: data.map(
+      ({ side_slots: sideSlots, ignore_deck_limit_slots: ignoreDeckLimitSlots, ...deck }) => ({
+        ...deck,
+        sideSlots,
+        ignoreDeckLimitSlots,
+    })),
     meta: {
       limit: search.limit,
       offset: search.offset,
