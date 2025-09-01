@@ -350,7 +350,7 @@ function serialize(data: Record<string, unknown>[]): any[] {
         const s = JSON.stringify(value);
         serializedRow[key] = s;
       } else {
-        serializedRow[key] = value;
+        serializedRow[key] = value || null;
       }
     }
 

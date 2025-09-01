@@ -221,11 +221,16 @@ export async function search(db: Database, search: SearchRequest) {
   return {
     // TECH DEBT: legacy field names
     data: data.map(
-      ({ side_slots: sideSlots, ignore_deck_limit_slots: ignoreDeckLimitSlots, ...deck }) => ({
+      ({
+        side_slots: sideSlots,
+        ignore_deck_limit_slots: ignoreDeckLimitSlots,
+        ...deck
+      }) => ({
         ...deck,
         sideSlots,
         ignoreDeckLimitSlots,
-    })),
+      }),
+    ),
     meta: {
       limit: search.limit,
       offset: search.offset,
